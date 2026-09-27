@@ -23,7 +23,17 @@ npm run db:migrate
 npm run dev
 ```
 
-Open [http://127.0.0.1:43127](http://127.0.0.1:43127).
+Open [http://127.0.0.1:43127](http://127.0.0.1:43127) on the same machine.
+
+### Cloud Agent / remote preview
+
+`127.0.0.1` on your laptop is not the Cloud Agent VM. From a remote agent session, expose the app with a quick tunnel (updates `APP_URL` / `AUTH_URL` automatically):
+
+```bash
+./scripts/dev-with-tunnel.sh
+```
+
+Use the printed `https://….trycloudflare.com` URL in your browser. Demo login: `demo@familycircles.local` / `demo1234`.
 
 ## Deploy on Unraid
 
