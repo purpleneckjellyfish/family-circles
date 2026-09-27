@@ -42,8 +42,9 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 - **Auth.js** Credentials + JWT; emails lowercased; bcrypt in `lib/password.ts`.
 - **Roles**: `owner` / `adult` moderate + invite; `follower` can contribute/comment. Adults/owners may **hide** or **remove** follower posts only.
 - **Memories**: `posts.memoryDate` (when it happened) vs `posts.postedAt` (when shared). EXIF prefills memory date (editable). Photos under `DATA_DIR/families/...` — never in Postgres.
+- **Throwbacks**: on-this-day matches `memory_date` month/day (else `posted_at` date), prior years only. Birthdays from `people.birthday`; anniversaries from `milestones`.
 - **Drizzle schema first**, then `db:generate` / `db:migrate`.
-- **Federation/video hooks** stay in schema; do not implement Phase 3+ unless asked.
+- **Federation/video hooks** stay in schema; do not implement Phase 4+ unless asked.
 - Comment **why**; brand **Family Circles**.
 
 ## Design bar
@@ -61,4 +62,4 @@ Warm paper + ink + forest accent; Fraunces + Source Sans 3. No purple SaaS chrom
 
 ## Phase map
 
-Phases 0–2 are in (foundation, people/circles, memories). Do not start throwbacks/PWA/federation unless asked.
+Phases 0–3 are in (foundation, people/circles, memories, throwbacks). Do not start PWA/federation unless asked.
