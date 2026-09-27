@@ -10,6 +10,14 @@ fi
 
 mkdir -p /mnt/user/appdata/family-circles/data /mnt/user/appdata/family-circles/pgdata 2>/dev/null || true
 
+# Optional: authenticate to GHCR when the package is private or anonymous pull is blocked.
+GHCR_USER="${GHCR_USER:-purpleneckjellyfish}"
+GHCR_PASS="${GHCR_TOKEN:-${GITHUB_TOKEN:-}}"
+if [[ -n "$GHCR_PASS" ]]; then
+  echo "Logging in to ghcr.io as ${GHCR_USER}…"
+  echo "$GHCR_PASS" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+fi
+
 COMPOSE=(docker compose -f docker-compose.yml -f docker-compose.unraid.yml)
 
 echo "Pulling ${FAMILY_CIRCLES_IMAGE:-ghcr.io/purpleneckjellyfish/family-circles:latest}…"

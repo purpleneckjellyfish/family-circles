@@ -15,7 +15,16 @@ On every push to `main`, [`.github/workflows/docker.yml`](../.github/workflows/d
 1. Open [github.com/purpleneckjellyfish/family-circles/pkgs](https://github.com/purpleneckjellyfish/family-circles/pkgs/container/family-circles) (or **Packages** on your profile).
 2. Confirm the package is **Public** (the workflow tries to set this; if pull fails with `denied`, set visibility to Public once in the UI).
 
-Unraid then needs **no** `docker login` for pulls.
+Unraid then needs **no** `docker login` for pulls when the package is Public.
+
+If `docker pull` returns `denied`, either open the [package settings](https://github.com/users/purpleneckjellyfish/packages/container/package/family-circles) → **Package settings** → **Change visibility** → Public, or log in once on the tower:
+
+```bash
+# Fine-grained or classic PAT with read:packages
+echo YOUR_GHCR_PAT | docker login ghcr.io -u purpleneckjellyfish --password-stdin
+```
+
+(`scripts/unraid-up.sh` will use `GHCR_TOKEN` / `GITHUB_TOKEN` from the environment automatically when set.)
 
 ## Get the code
 
