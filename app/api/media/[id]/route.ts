@@ -22,6 +22,33 @@ function parseRange(rangeHeader: string, size: number) {
   return { start, end: Math.min(end, size - 1) };
 }
 
+/** Short-lived proxy for remote federated media (no local mirror required). */
+async function proxyRemote(remoteUri: string, req: Request, mimeType: string | null) {
+  const range = req.headers.get("range");
+  const upstream = await fetch(remoteUri, {
+    headers: range ? { Range: range } : undefined,
+    redirect: "follow",
+  });
+  if (!upstream.ok && upstream.status !== 206) {
+    return NextResponse.json({ error: "Origin media unavailable" }, { status: 502 });
+  }
+  const headers = new Headers();
+  headers.set(
+    "Content-Type",
+    upstream.headers.get("content-type") || mimeType || "application/octet-stream",
+  );
+  const len = upstream.headers.get("content-length");
+  if (len) headers.set("Content-Length", len);
+  const cr = upstream.headers.get("content-range");
+  if (cr) headers.set("Content-Range", cr);
+  headers.set("Accept-Ranges", "bytes");
+  headers.set("Cache-Control", "private, max-age=300");
+  return new NextResponse(upstream.body, {
+    status: upstream.status,
+    headers,
+  });
+}
+
 export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
@@ -38,6 +65,7 @@ export async function GET(
     .select({
       id: media.id,
       storagePath: media.storagePath,
+      remoteUri: media.remoteUri,
       mimeType: media.mimeType,
       kind: media.kind,
       postId: media.postId,
@@ -49,7 +77,7 @@ export async function GET(
     .where(eq(media.id, id))
     .limit(1);
 
-  if (!row?.storagePath) {
+  if (!row || (!row.storagePath && !row.remoteUri)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -78,10 +106,15 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Federated attachment — stream from origin (or redirect if HEAD-unfriendly).
+  if (!row.storagePath && row.remoteUri) {
+    return proxyRemote(row.remoteUri, req, row.mimeType);
+  }
+
   const wantPoster = variant === "poster" && row.kind === "video";
   const relPath = wantPoster
-    ? posterStoragePath(row.storagePath)
-    : row.storagePath;
+    ? posterStoragePath(row.storagePath!)
+    : row.storagePath!;
   const contentType = wantPoster
     ? "image/jpeg"
     : row.mimeType || "application/octet-stream";

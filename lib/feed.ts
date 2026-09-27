@@ -36,6 +36,8 @@ export type FeedPost = {
     height: number | null;
     durationMs: number | null;
     sortOrder: number;
+    /** False for federated URL-only attachments. */
+    hasLocalFile: boolean;
   }>;
   people: Array<{ id: string; displayName: string }>;
   albums: Array<{ id: string; title: string }>;
@@ -168,6 +170,7 @@ async function hydrateFeedPosts(
         height: m.height,
         durationMs: m.durationMs,
         sortOrder: m.sortOrder,
+        hasLocalFile: Boolean(m.storagePath),
       })),
     people: peopleRows
       .filter((p) => p.postId === r.id)

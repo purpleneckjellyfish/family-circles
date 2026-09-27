@@ -145,6 +145,36 @@ export const follows = pgTable(
   ],
 );
 
+/**
+ * Remote ActivityPub actors that follow a *local* family.
+ * Used to fan-out Create activities when someone posts in the circle.
+ */
+export const federatedFollowers = pgTable(
+  "federated_followers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    actorUri: text("actor_uri").notNull(),
+    inboxUri: text("inbox_uri").notNull(),
+    sharedInboxUri: text("shared_inbox_uri"),
+    publicKeyPem: text("public_key_pem"),
+    status: followStatusEnum("status").notNull().default("accepted"),
+    followActivityUri: text("follow_activity_uri"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("federated_followers_family_actor_uidx").on(
+      table.familyId,
+      table.actorUri,
+    ),
+    index("federated_followers_family_idx").on(table.familyId),
+  ],
+);
+
 /** People who can be tagged in memories (kids may have no user account). */
 export const people = pgTable(
   "people",

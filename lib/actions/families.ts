@@ -14,6 +14,7 @@ import {
   invites,
 } from "@/db";
 import type { ActionState } from "@/lib/actions/auth";
+import { ensureLocalFamilyActor } from "@/lib/federation/actor";
 import { requireUser } from "@/lib/session";
 import { slugify } from "@/lib/slug";
 
@@ -67,6 +68,9 @@ export async function createFamilyAction(
     userId: user.id!,
     role: "owner",
   });
+
+  // Publish ActivityPub actor IRIs + keys so other Unraid hosts can follow.
+  await ensureLocalFamilyActor(family.id);
 
   redirect(`/families/${family.slug}`);
 }

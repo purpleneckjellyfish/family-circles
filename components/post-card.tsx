@@ -90,7 +90,11 @@ export function PostCard({
                 <MemoryVideo
                   key={m.id}
                   src={`/api/media/${m.id}`}
-                  poster={`/api/media/${m.id}?variant=poster`}
+                  poster={
+                    m.hasLocalFile
+                      ? `/api/media/${m.id}?variant=poster`
+                      : undefined
+                  }
                   durationMs={m.durationMs}
                   className={cellClass}
                 />

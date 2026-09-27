@@ -17,6 +17,8 @@ import {
 } from "@/db";
 import { loadFeedPosts } from "@/lib/feed";
 import { env } from "@/lib/env";
+import { ensureLocalFamilyActor, isLocalFamily } from "@/lib/federation/actor";
+import { familyActorUrl, webfingerAcct } from "@/lib/federation/urls";
 import {
   canContribute,
   canModerate,
@@ -50,6 +52,12 @@ export default async function FamilyPage({
 
   if (!family) notFound();
 
+  const remoteCircle = !isLocalFamily(family);
+  let localActor = family;
+  if (!remoteCircle) {
+    localActor = await ensureLocalFamilyActor(family.id);
+  }
+
   const members = await db
     .select({
       id: users.id,
@@ -62,10 +70,10 @@ export default async function FamilyPage({
     .where(eq(familyMemberships.familyId, family.id));
 
   const myMembership = members.find((m) => m.id === user.id);
-  const canInvite = canModerate(myMembership?.role);
+  const canInvite = !remoteCircle && canModerate(myMembership?.role);
   const familyMember = isFamilyMember(myMembership?.role);
-  const mayPost = canContribute(myMembership?.role);
-  const viewerCanModerate = canModerate(myMembership?.role);
+  const mayPost = !remoteCircle && canContribute(myMembership?.role);
+  const viewerCanModerate = !remoteCircle && canModerate(myMembership?.role);
 
   const [myFollow] = await db
     .select()
@@ -103,6 +111,15 @@ export default async function FamilyPage({
             <h1 className="font-display text-4xl font-semibold text-ink">
               {family.name}
             </h1>
+            {remoteCircle ? (
+              <p className="mt-2 text-sm text-ink-soft">
+                Remote circle on{" "}
+                <span className="font-medium text-ink">{family.instanceHost}</span>
+                {family.allowFederatedComments
+                  ? " · federated comments allowed"
+                  : " · comments view-only"}
+              </p>
+            ) : null}
             {family.summary ? (
               <p className="mt-2 max-w-lg text-ink-soft">{family.summary}</p>
             ) : null}
@@ -113,8 +130,11 @@ export default async function FamilyPage({
             ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
-            {!familyMember ? (
+            {!familyMember && !remoteCircle ? (
               <FollowButton familyId={family.id} isFollowing={isFollowing} />
+            ) : null}
+            {remoteCircle && isFollowing ? (
+              <FollowButton familyId={family.id} isFollowing />
             ) : null}
             {mayPost ? (
               <Button render={<Link href={`/families/${slug}/posts/new`} />}>
@@ -123,6 +143,19 @@ export default async function FamilyPage({
             ) : null}
           </div>
         </div>
+
+        {!remoteCircle && canInvite ? (
+          <p className="mt-4 text-xs text-ink-soft">
+            Federated actor:{" "}
+            <code className="text-[0.7rem]">
+              {localActor.remoteUri || familyActorUrl(localActor.slug)}
+            </code>
+            {" · "}
+            <code className="text-[0.7rem]">
+              {webfingerAcct(localActor.slug)}
+            </code>
+          </p>
+        ) : null}
 
         {canView ? (
           <FamilySubnav slug={slug} active="feed" />

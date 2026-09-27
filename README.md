@@ -46,16 +46,17 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/digest"
 
 Run that **hourly** from Unraid / cron. Delivery happens when the user’s local hour equals their digest hour and they are outside quiet hours.
 
-## Try the product (Phases 1–7)
+## Try the product (Phases 1–8)
 
 1. **Create account** at `/signup`.
-2. **Create a circle** (Home → New circle).
+2. **Create a circle** (Home → New circle) — publishes a federated actor.
 3. **People** / **Albums** / **Milestones** as needed.
 4. **New memory** → caption and/or photos; optional **videos** (MP4/MOV/WebM; server transcodes with ffmpeg).
 5. **Home feed** + **Throwbacks** — videos play inline with poster frames.
 6. **Alerts** → enable push + quiet hours / digest.
 7. **Browse** (`/families/<slug>/browse`) → by person, year, or album.
 8. **Export** (`/families/<slug>/export`) → Download ZIP (images, playable videos, captions/dates).
+9. **Federation** → Browse → Follow a remote circle (`https://other/families/slug` or `acct:slug@host`). See [docs/federation.md](docs/federation.md).
 
 Video needs **ffmpeg** on the host (dev) or in the Docker image (see [docs/unraid.md](docs/unraid.md)).
 
@@ -82,9 +83,10 @@ docker compose up --build
 | `lib/browse.ts` / `lib/export-zip.ts` | Browse queries + ZIP export |
 | `components/` | UI (photo-first cards, empty/loading states) |
 | `docs/unraid.md` | Unraid volumes, HTTPS, VAPID, cron |
+| `docs/federation.md` | Cross-instance ActivityPub follow / media / comments |
 | `db/` | Drizzle schema + client |
 | `AGENTS.md` | Architecture map for agents / IDEs |
 
 ## What’s next
 
-Phase 8: ActivityPub-style federation across Family Circles instances.
+Product phases 0–8 are implemented. Further work is polish, hardening HTTP signature strictness, and richer remote contribute flows.

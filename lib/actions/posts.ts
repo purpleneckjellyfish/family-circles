@@ -26,6 +26,8 @@ import {
 } from "@/lib/permissions";
 import { notifyNewFamilyPost } from "@/lib/push";
 import { requireUser } from "@/lib/session";
+import { ensureLocalFamilyActor } from "@/lib/federation/actor";
+import { fanOutLocalPost } from "@/lib/federation/activities";
 
 function revalidateFamily(slug: string) {
   revalidatePath("/home");
@@ -250,6 +252,11 @@ export async function createPostAction(
     authorName: user.name ?? "Someone",
     preview,
   }).catch(() => undefined);
+
+  // Federate to remote followers (async; posting must not wait on delivery).
+  void ensureLocalFamilyActor(familyId)
+    .then((ready) => fanOutLocalPost({ family: ready, postId: post.id }))
+    .catch(() => undefined);
 
   revalidateFamily(slug);
   redirect(`/families/${slug}/posts/${post.id}`);

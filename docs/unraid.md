@@ -163,6 +163,18 @@ If ffmpeg is missing, the compose form returns a clear error instead of saving a
 | Video upload times out | Slow disks / large files — wait, or raise reverse-proxy timeouts |
 | Player won’t seek | Ensure `/api/media` is not stripping `Range` headers at the proxy |
 
+## Federation (cross-instance)
+
+ActivityPub-style family actors so one Unraid box can follow another. Full guide: [`docs/federation.md`](./federation.md).
+
+Proxy must expose:
+
+- `/.well-known/webfinger`
+- `/ap/families/*` (actor, inbox, outbox, followers)
+- `/ap/notes/*`, `/ap/media/*`
+
+Set `APP_URL` to the public **HTTPS** origin on both hosts. Follow from **Browse → Follow a remote circle** using `https://other/families/slug` or `acct:slug@other`.
+
 ## Troubleshooting
 
 | Symptom | Check |
@@ -172,6 +184,7 @@ If ffmpeg is missing, the compose form returns a clear error instead of saving a
 | Login loops | `AUTH_URL` / `APP_URL` must match the browser origin |
 | Empty media | Volume mounted at `/data`; file permissions for the `node` user |
 | Digest never sends | Cron hitting `/api/cron/digest` with correct `CRON_SECRET` |
+| Remote follow fails | See [`docs/federation.md`](./federation.md); both apps Phase 8+; WebFinger reachable |
 
 ## Related
 

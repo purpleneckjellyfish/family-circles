@@ -27,6 +27,7 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 | Browse (person / year / album) | `app/families/[slug]/browse/*`, `lib/browse.ts` |
 | ZIP export | `app/families/[slug]/export`, `app/api/families/[slug]/export`, `lib/export-zip.ts` |
 | Video | `lib/video.ts`, `lib/media-storage.ts` (`storeVideoFile`), compose form `videos`, playback via `MemoryVideo` + Range on `/api/media` |
+| Federation | `lib/federation/*`, `app/ap/*`, `app/.well-known/webfinger`, `docs/federation.md`, Browse → follow remote |
 | Empty / loading / error UI | `components/ui-states.tsx`, `app/**/loading.tsx`, `app/error.tsx`, `app/not-found.tsx` |
 | Unraid deploy | `docs/unraid.md`, `docker-compose.yml`, `Dockerfile` (includes **ffmpeg**) |
 | Albums / people | `app/families/[slug]/albums/*`, `.../people`, `lib/actions/albums.ts`, `lib/actions/people.ts` |
@@ -53,8 +54,8 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 - **Browse / export**: `/families/[slug]/browse` lists people, years (memory date else posted), albums. ZIP at `/families/[slug]/export` → `/api/families/[slug]/export` (originals + `memories.json` / `memories.csv`).
 - **Polish**: photo-first post cards, intentional motion (`animate-fc-*`, reduced-motion safe), empty / loading / error states. Deploy notes in `docs/unraid.md`.
 - **Video**: `media.kind = video`. Upload via compose → ffmpeg H.264/AAC MP4 + poster; play with `MemoryVideo` and Range requests. Docker image installs ffmpeg.
+- **Federation**: families are ActivityPub `Group` actors (`/ap/families/{slug}`). Follow remote via Browse; posts cache with `isRemote` + `media.remoteUri`; `/api/media` proxies origin. See `docs/federation.md`.
 - **Drizzle schema first**, then `db:generate` / `db:migrate`.
-- **Federation hooks** stay in schema; do not implement Phase 8 unless asked.
 - Comment **why**; brand **Family Circles**.
 
 ## Design bar
@@ -72,4 +73,4 @@ Warm paper + ink + forest accent; Fraunces + Source Sans 3. Photo-first album fe
 
 ## Phase map
 
-Phases 0–7 are in (foundation through video). Do not start federation unless asked.
+Phases 0–8 complete for the planned product arc (foundation through federation).
