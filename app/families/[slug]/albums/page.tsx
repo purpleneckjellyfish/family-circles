@@ -6,6 +6,7 @@ import {
   CreateAlbumForm,
   DeleteAlbumButton,
 } from "@/components/memory-admin-forms";
+import { FamilySubnav } from "@/components/family-subnav";
 import { SiteHeader } from "@/components/site-header";
 import { albums, families, follows, getDb } from "@/db";
 import { canModerate, getMembership } from "@/lib/permissions";
@@ -62,6 +63,7 @@ export default async function AlbumsPage({
         <p className="mt-2 text-ink-soft">
           Group memories by trip, season, or celebration.
         </p>
+        <FamilySubnav slug={slug} active="albums" />
 
         <ul className="mt-8 space-y-3">
           {rows.length === 0 ? (

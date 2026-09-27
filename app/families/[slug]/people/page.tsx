@@ -6,6 +6,7 @@ import {
   CreatePersonForm,
   DeletePersonButton,
 } from "@/components/memory-admin-forms";
+import { FamilySubnav } from "@/components/family-subnav";
 import { SiteHeader } from "@/components/site-header";
 import { families, follows, getDb, people } from "@/db";
 import { canModerate, getMembership } from "@/lib/permissions";
@@ -62,6 +63,7 @@ export default async function PeoplePage({
         <p className="mt-2 text-ink-soft">
           Tag kids and relatives on memories — no account required.
         </p>
+        <FamilySubnav slug={slug} active="people" />
 
         <ul className="mt-8 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
           {rows.length === 0 ? (
@@ -73,7 +75,12 @@ export default async function PeoplePage({
                 className="flex items-center justify-between gap-3 px-4 py-3"
               >
                 <div>
-                  <p className="text-ink">{p.displayName}</p>
+                  <Link
+                    href={`/families/${slug}/browse/people/${p.id}`}
+                    className="text-ink hover:text-forest"
+                  >
+                    {p.displayName}
+                  </Link>
                   {p.birthday ? (
                     <p className="text-sm text-ink-soft">Birthday {p.birthday}</p>
                   ) : null}

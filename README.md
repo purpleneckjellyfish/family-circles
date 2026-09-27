@@ -42,14 +42,16 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/digest"
 
 Run that **hourly** from Unraid / cron. Delivery happens when the user’s local hour equals their digest hour and they are outside quiet hours.
 
-## Try the product (Phases 1–4)
+## Try the product (Phases 1–5)
 
 1. **Create account** at `/signup`.
 2. **Create a circle** (Home → New circle).
 3. **People** / **Albums** / **Milestones** as needed.
-4. **New memory** → caption and/or photos; EXIF can prefill memory date.
+4. **New memory** → caption and/or photos; EXIF can prefill memory date; tag people / albums.
 5. **Home feed** + **Throwbacks**.
 6. **Alerts** → enable push + quiet hours / digest.
+7. **Browse** (`/families/<slug>/browse`) → by person, year, or album.
+8. **Export** (`/families/<slug>/export`) → Download ZIP (originals + captions/dates in JSON/CSV).
 
 ## Run with Docker Compose
 
@@ -71,10 +73,11 @@ docker compose up --build
 | `auth.ts` | Auth.js configuration |
 | `public/sw.js` | Service worker (PWA + push) |
 | `lib/push.ts` | Web push + quiet hours / digest |
+| `lib/browse.ts` / `lib/export-zip.ts` | Browse queries + ZIP export |
 | `components/` | UI |
 | `db/` | Drizzle schema + client |
 | `AGENTS.md` | Architecture map for agents / IDEs |
 
 ## What’s next
 
-Phase 5+: browse/export, Unraid polish, video UI, ActivityPub federation.
+Phase 6+: Unraid polish, video UI, ActivityPub federation.

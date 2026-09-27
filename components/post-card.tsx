@@ -116,12 +116,13 @@ export function PostCard({
       {(post.people.length > 0 || post.albums.length > 0) && (
         <div className="mt-3 flex flex-wrap gap-2 text-sm text-ink-soft">
           {post.people.map((p) => (
-            <span
+            <Link
               key={p.id}
-              className="rounded-md bg-forest-soft/60 px-2 py-0.5 text-forest"
+              href={`/families/${post.familySlug}/browse/people/${p.id}`}
+              className="rounded-md bg-forest-soft/60 px-2 py-0.5 text-forest hover:bg-forest-soft"
             >
               {p.displayName}
-            </span>
+            </Link>
           ))}
           {post.albums.map((a) => (
             <Link

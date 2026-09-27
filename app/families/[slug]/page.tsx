@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 
 import { SiteHeader } from "@/components/site-header";
 import { FollowButton, InviteForm } from "@/components/family-forms";
+import { FamilySubnav } from "@/components/family-subnav";
 import { PostCard } from "@/components/post-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -123,26 +124,7 @@ export default async function FamilyPage({
         </div>
 
         {canView ? (
-          <nav className="mt-6 flex flex-wrap gap-3 text-sm">
-            <Link
-              href={`/families/${slug}/people`}
-              className="text-forest underline-offset-4 hover:underline"
-            >
-              People
-            </Link>
-            <Link
-              href={`/families/${slug}/albums`}
-              className="text-forest underline-offset-4 hover:underline"
-            >
-              Albums
-            </Link>
-            <Link
-              href={`/families/${slug}/milestones`}
-              className="text-forest underline-offset-4 hover:underline"
-            >
-              Milestones
-            </Link>
-          </nav>
+          <FamilySubnav slug={slug} active="feed" />
         ) : (
           <p className="mt-6 text-ink-soft">
             Follow this circle as a collaborator to see memories, or ask for an

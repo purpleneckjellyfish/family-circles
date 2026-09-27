@@ -6,6 +6,7 @@ import {
   CreateMilestoneForm,
   DeleteMilestoneButton,
 } from "@/components/milestone-forms";
+import { FamilySubnav } from "@/components/family-subnav";
 import { SiteHeader } from "@/components/site-header";
 import {
   families,
@@ -90,6 +91,7 @@ export default async function MilestonesPage({
           </Link>
           .
         </p>
+        <FamilySubnav slug={slug} active="milestones" />
 
         <ul className="mt-8 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
           {rows.length === 0 ? (
