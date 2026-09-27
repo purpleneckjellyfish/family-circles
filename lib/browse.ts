@@ -189,6 +189,7 @@ export async function loadPostsForOccasion(opts: {
 
 export type ExportMemory = {
   id: string;
+  title: string | null;
   body: string | null;
   memoryDate: string | null;
   postedAt: string;
@@ -255,6 +256,7 @@ export async function loadExportMemories(opts: {
 
     return {
       id: p.id,
+      title: p.title,
       body: p.body,
       memoryDate: p.memoryDate,
       postedAt: p.postedAt.toISOString(),

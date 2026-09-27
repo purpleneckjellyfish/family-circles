@@ -49,6 +49,8 @@ export async function createPostAction(
   const user = await requireUser();
   const familyId = String(formData.get("familyId") ?? "");
   const familySlug = String(formData.get("familySlug") ?? "");
+  const titleRaw = String(formData.get("title") ?? "").trim();
+  const title = titleRaw || null;
   const body = String(formData.get("body") ?? "").trim();
   let memoryDate = String(formData.get("memoryDate") ?? "").trim() || null;
   const albumId = String(formData.get("albumId") ?? "").trim() || null;
@@ -81,8 +83,11 @@ export async function createPostAction(
     .getAll("videos")
     .filter((f): f is File => f instanceof File && f.size > 0);
 
-  if (!body && photoFiles.length === 0 && videoFiles.length === 0) {
-    return { error: "Add a caption, photo, or video." };
+  if (title && title.length > 140) {
+    return { error: "Keep the title under 140 characters." };
+  }
+  if (!title && !body && photoFiles.length === 0 && videoFiles.length === 0) {
+    return { error: "Add a title, some words, a photo, or a video." };
   }
   if (photoFiles.length > 12) {
     return { error: "Up to 12 photos per memory for now." };
@@ -124,6 +129,7 @@ export async function createPostAction(
     .values({
       familyId,
       authorUserId: user.id!,
+      title,
       body: body || null,
       memoryDate,
       occasion,
@@ -229,6 +235,7 @@ export async function createPostAction(
   const photoCount = stored.filter((s) => s.kind === "image").length;
   const videoCount = stored.filter((s) => s.kind === "video").length;
   const preview =
+    title ||
     body ||
     (videoCount && !photoCount
       ? videoCount === 1
@@ -263,6 +270,8 @@ export async function updatePostAction(
 ): Promise<ActionState> {
   const user = await requireUser();
   const postId = String(formData.get("postId") ?? "");
+  const titleRaw = String(formData.get("title") ?? "").trim();
+  const title = titleRaw || null;
   const body = String(formData.get("body") ?? "").trim();
   const memoryDate = String(formData.get("memoryDate") ?? "").trim() || null;
   const occasionRaw = String(formData.get("occasion") ?? "none").trim() || "none";
@@ -307,10 +316,15 @@ export async function updatePostAction(
     }
   }
 
+  if (title && title.length > 140) {
+    return { error: "Keep the title under 140 characters." };
+  }
+
   const occasion = occasionParsed.data;
   await db
     .update(posts)
     .set({
+      title,
       body: body || null,
       memoryDate,
       occasion,

@@ -135,7 +135,7 @@ export default async function AppHomePage() {
   const firstFamily = familyMembers[0] ?? collaboratorMemberships[0];
   const [y, m, d] = throwbacks.today.split("-").map(Number);
   const throwbackDayLabel = new Date(y!, m! - 1, d!).toLocaleDateString(
-    undefined,
+    "en-GB",
     { month: "long", day: "numeric" },
   );
 

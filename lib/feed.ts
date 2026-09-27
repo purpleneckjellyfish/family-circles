@@ -19,6 +19,7 @@ import { canModerate } from "@/lib/permissions";
 
 export type FeedPost = {
   id: string;
+  title: string | null;
   body: string | null;
   memoryDate: string | null;
   occasion: "none" | "christmas" | "birthday" | "easter" | "other";
@@ -51,6 +52,7 @@ export type FeedPost = {
 
 type PostRow = {
   id: string;
+  title: string | null;
   body: string | null;
   memoryDate: string | null;
   occasion: "none" | "christmas" | "birthday" | "easter" | "other";
@@ -192,6 +194,7 @@ async function hydrateFeedPosts(
 
   return visible.map((r) => ({
     id: r.id,
+    title: r.title,
     body: r.body,
     memoryDate: r.memoryDate,
     occasion: r.occasion,
@@ -246,6 +249,7 @@ export async function loadFeedPosts(opts: {
   const rows = await db
     .select({
       id: posts.id,
+      title: posts.title,
       body: posts.body,
       memoryDate: posts.memoryDate,
       occasion: posts.occasion,
@@ -282,6 +286,7 @@ export async function loadPostsByIds(opts: {
   const rows = await db
     .select({
       id: posts.id,
+      title: posts.title,
       body: posts.body,
       memoryDate: posts.memoryDate,
       occasion: posts.occasion,

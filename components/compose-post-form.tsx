@@ -195,12 +195,11 @@ export function ComposePostForm({
         <p className="mb-2 text-sm text-ink-soft">Posting to {active.name}</p>
       )}
 
-      <Textarea
-        name="body"
-        rows={compact ? 3 : 4}
-        placeholder="What's happening with the family?"
-        maxLength={8000}
-        className="border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+      <Input
+        name="title"
+        placeholder="Add a title"
+        maxLength={140}
+        className="border-0 bg-transparent px-0 font-display text-xl shadow-none focus-visible:ring-0 md:text-2xl"
       />
 
       {drafts.length > 0 ? (
@@ -253,6 +252,14 @@ export function ComposePostForm({
       {mediaNote ? (
         <p className="mt-2 text-xs text-ink-soft">{mediaNote}</p>
       ) : null}
+
+      <Textarea
+        name="body"
+        rows={compact ? 3 : 4}
+        placeholder="Add a few words"
+        maxLength={8000}
+        className="mt-3 border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
+      />
 
       <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border/60 pt-3">
         <button

@@ -35,11 +35,11 @@ export async function ingestRemoteNote(opts: {
   const objectId = asString(opts.object.id);
   if (!objectId) return null;
 
-  const content =
-    asString(opts.object.content) ||
-    asString(opts.object.name) ||
-    asString(opts.object.summary) ||
-    null;
+  const name = asString(opts.object.name);
+  const contentRaw = asString(opts.object.content);
+  const summary = asString(opts.object.summary);
+  const title = name && (contentRaw || summary) ? name.slice(0, 140) : null;
+  const content = contentRaw || (!title ? name : null) || summary || null;
   const published = asString(opts.object.published);
   const memoryDate =
     asString(opts.object["fc:memoryDate"]) ||
@@ -58,6 +58,7 @@ export async function ingestRemoteNote(opts: {
     await db
       .update(posts)
       .set({
+        title,
         body: content,
         memoryDate,
         updatedAt: new Date(),
@@ -69,6 +70,7 @@ export async function ingestRemoteNote(opts: {
       .values({
         familyId: opts.familyId,
         authorUserId: null,
+        title,
         body: content,
         memoryDate,
         postedAt: published ? new Date(published) : new Date(),

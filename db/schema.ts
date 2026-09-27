@@ -267,6 +267,8 @@ export const posts = pgTable(
     authorUserId: uuid("author_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    /** Optional heading, shown above the photos. */
+    title: text("title"),
     body: text("body"),
     /** When the memory happened (EXIF/user-chosen); distinct from postedAt. */
     memoryDate: date("memory_date"),

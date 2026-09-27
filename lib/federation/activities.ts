@@ -19,6 +19,7 @@ export function buildNoteActivity(opts: {
   family: FamilyRow;
   post: {
     id: string;
+    title?: string | null;
     body: string | null;
     memoryDate: string | null;
     postedAt: Date;
@@ -51,6 +52,7 @@ export function buildNoteActivity(opts: {
     id: objectId,
     type: "Note",
     attributedTo: actor,
+    name: opts.post.title || undefined,
     content: opts.post.body || "",
     published,
     url: objectId,

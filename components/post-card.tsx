@@ -28,7 +28,7 @@ function formatDate(value: string | Date | null) {
   if (!value) return null;
   const d = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("en-GB", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -115,15 +115,65 @@ export function PostCard({
       )}
       style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
     >
+      <div className="px-4 pt-4 sm:px-5 sm:pt-5">
+        <header className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            {showFamilyLink ? (
+              <Link
+                href={`/families/${post.familySlug}`}
+                className="font-display text-lg text-ink hover:text-forest"
+              >
+                {post.familyName}
+              </Link>
+            ) : (
+              <p className="font-display text-lg text-ink">{post.familyName}</p>
+            )}
+            <p className="text-sm text-ink-soft">
+              {post.authorName ?? "Someone"}
+              {post.authorRole === "follower" ? " · collaborator" : null}
+              {memoryLabel ? ` · memory ${memoryLabel}` : null}
+              {postedLabel ? ` · posted ${postedLabel}` : null}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {throwbackYearsAgo != null ? (
+              <span className="fc-sticker">
+                On this day · {throwbackYearsAgo}{" "}
+                {throwbackYearsAgo === 1 ? "year" : "years"} ago
+              </span>
+            ) : null}
+            {occasion ? (
+              <Link
+                href={`/families/${post.familySlug}/browse/occasions/${post.occasion}${post.memoryDate ? `?year=${post.memoryDate.slice(0, 4)}` : ""}`}
+                className="fc-sticker transition hover:bg-forest hover:text-primary-foreground"
+              >
+                {occasion}
+              </Link>
+            ) : null}
+            {post.hiddenAt ? (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-ink-soft">
+                Hidden
+              </span>
+            ) : null}
+          </div>
+        </header>
+        {!editing && post.title ? (
+          <h2 className="mt-3 font-display text-2xl font-semibold text-ink">
+            {post.title}
+          </h2>
+        ) : null}
+      </div>
+
       {hasMedia ? (
         <div
-          className={
+          className={cn(
+            "mt-4",
             post.media.length === 1
               ? "grid grid-cols-1"
               : post.media.length === 2
                 ? "grid grid-cols-2 gap-px bg-border/60"
-                : "grid grid-cols-2 gap-px bg-border/60 sm:grid-cols-3"
-          }
+                : "grid grid-cols-2 gap-px bg-border/60 sm:grid-cols-3",
+          )}
         >
           {post.media.map((m, i) => {
             const cellClass =
@@ -167,48 +217,6 @@ export function PostCard({
       ) : null}
 
       <div className="p-4 sm:p-5">
-        <header className="flex flex-wrap items-baseline justify-between gap-2">
-          <div>
-            {showFamilyLink ? (
-              <Link
-                href={`/families/${post.familySlug}`}
-                className="font-display text-lg text-ink hover:text-forest"
-              >
-                {post.familyName}
-              </Link>
-            ) : (
-              <p className="font-display text-lg text-ink">{post.familyName}</p>
-            )}
-            <p className="text-sm text-ink-soft">
-              {post.authorName ?? "Someone"}
-              {post.authorRole === "follower" ? " · collaborator" : null}
-              {memoryLabel ? ` · memory ${memoryLabel}` : null}
-              {postedLabel ? ` · posted ${postedLabel}` : null}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {throwbackYearsAgo != null ? (
-              <span className="fc-sticker">
-                On this day · {throwbackYearsAgo}{" "}
-                {throwbackYearsAgo === 1 ? "year" : "years"} ago
-              </span>
-            ) : null}
-            {occasion ? (
-              <Link
-                href={`/families/${post.familySlug}/browse/occasions/${post.occasion}${post.memoryDate ? `?year=${post.memoryDate.slice(0, 4)}` : ""}`}
-                className="fc-sticker transition hover:bg-forest hover:text-primary-foreground"
-              >
-                {occasion}
-              </Link>
-            ) : null}
-            {post.hiddenAt ? (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-ink-soft">
-                Hidden
-              </span>
-            ) : null}
-          </div>
-        </header>
-
         {editing ? (
           <form
             className="mt-3 space-y-3"
@@ -225,6 +233,13 @@ export function PostCard({
             }}
           >
             <input type="hidden" name="postId" value={post.id} />
+            <Input
+              name="title"
+              defaultValue={post.title ?? ""}
+              placeholder="Title"
+              maxLength={140}
+              className="font-display text-lg"
+            />
             <Textarea
               name="body"
               defaultValue={post.body ?? ""}

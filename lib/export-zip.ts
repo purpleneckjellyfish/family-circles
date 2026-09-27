@@ -31,6 +31,7 @@ export function createFamilyExportZip(opts: {
     ...opts.meta,
     memories: opts.memories.map((m) => ({
       id: m.id,
+      title: m.title,
       caption: m.body,
       memoryDate: m.memoryDate,
       postedAt: m.postedAt,
@@ -54,6 +55,7 @@ export function createFamilyExportZip(opts: {
   const csvLines = [
     [
       "post_id",
+      "title",
       "caption",
       "memory_date",
       "posted_at",
@@ -69,6 +71,7 @@ export function createFamilyExportZip(opts: {
       csvLines.push(
         [
           csvEscape(m.id),
+          csvEscape(m.title ?? ""),
           csvEscape(m.body ?? ""),
           csvEscape(m.memoryDate ?? ""),
           csvEscape(m.postedAt),
@@ -84,6 +87,7 @@ export function createFamilyExportZip(opts: {
       csvLines.push(
         [
           csvEscape(m.id),
+          csvEscape(m.title ?? ""),
           csvEscape(m.body ?? ""),
           csvEscape(m.memoryDate ?? ""),
           csvEscape(m.postedAt),
