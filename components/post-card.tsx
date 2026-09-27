@@ -95,8 +95,7 @@ export function PostCard({
   );
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
 
-  const memoryLabel = formatDate(post.memoryDate);
-  const postedLabel = formatDate(post.postedAt);
+  const whenLabel = formatDate(post.memoryDate) ?? formatDate(post.postedAt);
   const hasMedia = post.media.length > 0;
   const occasion = occasionLabel(post);
   const actionError =
@@ -117,26 +116,24 @@ export function PostCard({
       )}
       style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
     >
-      <div className="px-4 pt-4 sm:px-5 sm:pt-5">
-        <header className="flex flex-wrap items-baseline justify-between gap-2">
-          <div>
+      <div className={cn("px-4 sm:px-5", hasMedia ? "pt-3" : "py-4")}>
+        <header className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <p className="text-sm text-ink-soft">
             {showFamilyLink ? (
               <Link
                 href={`/families/${post.familySlug}`}
-                className="font-display text-lg text-ink hover:text-forest"
+                className="hover:text-ink"
               >
                 {post.familyName}
               </Link>
             ) : (
-              <p className="font-display text-lg text-ink">{post.familyName}</p>
+              post.familyName
             )}
-            <p className="text-sm text-ink-soft">
-              {post.authorName ?? "Someone"}
-              {post.authorRole === "follower" ? " · collaborator" : null}
-              {memoryLabel ? ` · memory ${memoryLabel}` : null}
-              {postedLabel ? ` · posted ${postedLabel}` : null}
-            </p>
-          </div>
+            {" · "}
+            {post.authorName ?? "Someone"}
+            {post.authorRole === "follower" ? " · collaborator" : null}
+            {whenLabel ? ` · ${whenLabel}` : null}
+          </p>
           <div className="flex flex-wrap items-center gap-2">
             {throwbackYearsAgo != null ? (
               <span className="fc-sticker">
@@ -153,14 +150,14 @@ export function PostCard({
               </Link>
             ) : null}
             {post.hiddenAt ? (
-              <span className="rounded-md bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-ink-soft">
+              <span className="text-xs tracking-wide text-ink-soft uppercase">
                 Hidden
               </span>
             ) : null}
           </div>
         </header>
         {!editing && post.title ? (
-          <h2 className="mt-3 font-display text-2xl font-semibold text-ink">
+          <h2 className="mt-2 font-display text-3xl font-semibold text-ink">
             {post.title}
           </h2>
         ) : null}
@@ -169,7 +166,7 @@ export function PostCard({
       {hasMedia ? (
         <div
           className={cn(
-            "mt-4",
+            "mt-3",
             post.media.length === 1
               ? "grid grid-cols-1"
               : post.media.length === 2
@@ -235,7 +232,7 @@ export function PostCard({
         />
       ) : null}
 
-      <div className="p-4 sm:p-5">
+      <div className={cn("px-4 sm:px-5", hasMedia ? "py-3" : "pb-4")}>
         {editing ? (
           <form
             className="mt-3 space-y-3"
@@ -313,7 +310,7 @@ export function PostCard({
             </div>
           </form>
         ) : post.body ? (
-          <p className="mt-3 whitespace-pre-wrap text-ink leading-relaxed">
+          <p className="whitespace-pre-wrap text-ink leading-relaxed">
             {post.body}
           </p>
         ) : null}
@@ -355,10 +352,8 @@ export function PostCard({
                     type="submit"
                     disabled={reactPending}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm transition duration-200",
-                      mine
-                        ? "fc-react-on bg-forest-soft text-forest ring-1 ring-forest/30"
-                        : "bg-muted/60 text-ink hover:bg-forest-soft/50",
+                      "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm text-ink-soft transition duration-200 hover:text-ink",
+                      mine ? "fc-react-on text-forest" : "",
                     )}
                     aria-label={`React ${emoji}`}
                   >
@@ -381,84 +376,72 @@ export function PostCard({
           </div>
         ) : null}
 
-        <footer className="mt-4 flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            render={
-              <Link href={`/families/${post.familySlug}/posts/${post.id}`} />
-            }
+        <footer className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-soft">
+          <Link
+            href={`/families/${post.familySlug}/posts/${post.id}`}
+            className="hover:text-ink"
           >
             {post.commentCount === 1
               ? "1 comment"
               : `${post.commentCount} comments`}
-          </Button>
+          </Link>
 
           {viewerCanEdit ? (
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
+              className="hover:text-ink"
               onClick={() => setEditing(true)}
             >
               Edit
-            </Button>
+            </button>
           ) : null}
 
           {viewerCanDelete ? (
             <form action={deleteAction}>
               <input type="hidden" name="postId" value={post.id} />
-              <Button
+              <button
                 type="submit"
-                variant="ghost"
-                size="sm"
+                className="hover:text-ink"
                 disabled={deletePending}
                 onClick={(e) => {
                   if (!confirm("Delete this memory?")) e.preventDefault();
                 }}
               >
                 Delete
-              </Button>
+              </button>
             </form>
           ) : null}
 
           {canModerateFollower && !post.hiddenAt ? (
             <form action={hideAction}>
               <input type="hidden" name="postId" value={post.id} />
-              <Button
-                type="submit"
-                variant="ghost"
-                size="sm"
-                disabled={hidePending}
-              >
+              <button type="submit" className="hover:text-ink" disabled={hidePending}>
                 Hide
-              </Button>
+              </button>
             </form>
           ) : null}
           {canModerateFollower && post.hiddenAt ? (
             <form action={unhideAction}>
               <input type="hidden" name="postId" value={post.id} />
-              <Button
+              <button
                 type="submit"
-                variant="ghost"
-                size="sm"
+                className="hover:text-ink"
                 disabled={unhidePending}
               >
                 Unhide
-              </Button>
+              </button>
             </form>
           ) : null}
           {canModerateFollower ? (
             <form action={removeAction}>
               <input type="hidden" name="postId" value={post.id} />
-              <Button
+              <button
                 type="submit"
-                variant="destructive"
-                size="sm"
+                className="text-destructive hover:underline"
                 disabled={removePending}
               >
                 Remove
-              </Button>
+              </button>
             </form>
           ) : null}
         </footer>

@@ -5,6 +5,7 @@ import {
   ComposePostForm,
   type ComposerCircle,
 } from "@/components/compose-post-form";
+import { ImportPhotosForm } from "@/components/import-photos-form";
 import { PostCard } from "@/components/post-card";
 import { SiteHeader } from "@/components/site-header";
 import { EmptyState } from "@/components/ui-states";
@@ -17,17 +18,93 @@ import {
   getDb,
   people,
 } from "@/db";
-import { loadFeedPosts } from "@/lib/feed";
+import { loadFeedPosts, type FeedPost } from "@/lib/feed";
 import {
   canDeletePost,
   canEditPost,
   canModerate,
   familiesUserCanPostTo,
+  type MembershipRole,
 } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 import { loadThrowbacks } from "@/lib/throwbacks";
 
 export const metadata = { title: "Home" };
+
+type HomePost = { kind: "post"; post: FeedPost };
+type HomeThrowback = { kind: "throwback"; post: FeedPost; yearsAgo: number };
+
+function happenedTime(post: FeedPost) {
+  if (post.memoryDate) {
+    const [year, month, day] = post.memoryDate.split("-").map(Number);
+    if (year && month && day) return Date.UTC(year, month - 1, day);
+  }
+  return post.postedAt.getTime();
+}
+
+function monthLabel(post: FeedPost) {
+  if (post.memoryDate) {
+    const [year, month] = post.memoryDate.split("-").map(Number);
+    if (year && month) {
+      return new Date(Date.UTC(year, month - 1, 1)).toLocaleDateString("en-GB", {
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    }
+  }
+  return post.postedAt.toLocaleDateString("en-GB", {
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function groupByMonth(items: HomePost[]) {
+  const groups: Array<{ label: string; items: HomePost[] }> = [];
+  for (const item of items) {
+    const label = monthLabel(item.post);
+    const last = groups.at(-1);
+    if (!last || last.label !== label) {
+      groups.push({ label, items: [item] });
+    } else {
+      last.items.push(item);
+    }
+  }
+  return groups;
+}
+
+function FeedCard({
+  item,
+  index,
+  userId,
+  role,
+  viewerCanModerate,
+}: {
+  item: HomePost | HomeThrowback;
+  index: number;
+  userId: string;
+  role: MembershipRole | undefined;
+  viewerCanModerate: boolean;
+}) {
+  return (
+    <PostCard
+      post={item.post}
+      index={index}
+      viewerCanModerate={viewerCanModerate}
+      viewerCanEdit={canEditPost({
+        viewerRole: role,
+        viewerId: userId,
+        authorId: item.post.authorId,
+      })}
+      viewerCanDelete={canDeletePost({
+        viewerRole: role,
+        viewerId: userId,
+        authorId: item.post.authorId,
+      })}
+      throwbackYearsAgo={item.kind === "throwback" ? item.yearsAgo : undefined}
+    />
+  );
+}
 
 export default async function AppHomePage() {
   const user = await requireUser();
@@ -125,12 +202,13 @@ export default async function AppHomePage() {
       post: t.post,
       yearsAgo: t.yearsAgo,
     }));
-  const postItems = feed.map((post) => ({
-    kind: "post" as const,
-    post,
-  }));
-  // Throwbacks first (on-this-day), then chronological feed
-  const ordered = [...throwbackItems, ...postItems];
+  const postItems = feed
+    .map((post) => ({
+      kind: "post" as const,
+      post,
+    }))
+    .sort((a, b) => happenedTime(b.post) - happenedTime(a.post));
+  const monthGroups = groupByMonth(postItems);
 
   const firstFamily = familyMembers[0] ?? collaboratorMemberships[0];
   const [y, m, d] = throwbacks.today.split("-").map(Number);
@@ -173,6 +251,12 @@ export default async function AppHomePage() {
         {composerCircles.length > 0 ? (
           <section className="md:mt-8">
             <ComposePostForm circles={composerCircles} compact />
+            <ImportPhotosForm
+              circles={composerCircles.map((circle) => ({
+                id: circle.id,
+                name: circle.name,
+              }))}
+            />
           </section>
         ) : (
           <p className="text-sm text-ink-soft md:hidden">
@@ -181,10 +265,9 @@ export default async function AppHomePage() {
         )}
 
         <section className="mt-8 md:mt-10">
-          <h2 className="font-display text-2xl text-ink">Feed</h2>
-          {ordered.length === 0 ? (
+          <h2 className="sr-only">Feed</h2>
+          {throwbackItems.length === 0 && postItems.length === 0 ? (
             <EmptyState
-              className="mt-4"
               title="No memories yet"
               description="Create a circle or follow one, then share a photo or story. This feed gathers everything you belong to."
               actionHref={
@@ -195,33 +278,37 @@ export default async function AppHomePage() {
               actionLabel={firstFamily ? "Share a memory" : "Create a circle"}
             />
           ) : (
-            <div className="mt-4 space-y-5">
-              {ordered.map((item, i) => {
-                const role = roleByFamily.get(item.post.familyId);
-                const canEdit = canEditPost({
-                  viewerRole: role,
-                  viewerId: user.id!,
-                  authorId: item.post.authorId,
-                });
-                const canDelete = canDeletePost({
-                  viewerRole: role,
-                  viewerId: user.id!,
-                  authorId: item.post.authorId,
-                });
-                return (
-                  <PostCard
-                    key={`${item.kind}-${item.post.id}`}
-                    post={item.post}
-                    index={i}
-                    viewerCanModerate={moderateFamilies.has(item.post.familyId)}
-                    viewerCanEdit={canEdit}
-                    viewerCanDelete={canDelete}
-                    throwbackYearsAgo={
-                      item.kind === "throwback" ? item.yearsAgo : undefined
-                    }
-                  />
-                );
-              })}
+            <div className="space-y-10">
+              {throwbackItems.length > 0 ? (
+                <div className="space-y-5">
+                  <h3 className="text-sm text-ink-soft">On this day</h3>
+                  {throwbackItems.map((item, i) => (
+                    <FeedCard
+                      key={`throwback-${item.post.id}`}
+                      item={item}
+                      index={i}
+                      userId={user.id!}
+                      role={roleByFamily.get(item.post.familyId)}
+                      viewerCanModerate={moderateFamilies.has(item.post.familyId)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+              {monthGroups.map((group) => (
+                <div key={group.label} className="space-y-5">
+                  <h3 className="text-sm text-ink-soft">{group.label}</h3>
+                  {group.items.map((item, i) => (
+                    <FeedCard
+                      key={item.post.id}
+                      item={item}
+                      index={i}
+                      userId={user.id!}
+                      role={roleByFamily.get(item.post.familyId)}
+                      viewerCanModerate={moderateFamilies.has(item.post.familyId)}
+                    />
+                  ))}
+                </div>
+              ))}
             </div>
           )}
         </section>
