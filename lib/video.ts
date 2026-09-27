@@ -1,14 +1,51 @@
 import { spawn } from "node:child_process";
+import { constants } from "node:fs";
 import { access } from "node:fs/promises";
+import path from "node:path";
 
-/** True when ffmpeg binary is on PATH (required for video Phase 7). */
-export async function ffmpegAvailable(): Promise<boolean> {
+/** Homebrew and system locations, for servers started without that bin dir on PATH. */
+const EXTRA_BIN_DIRS = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"];
+
+let binaries: { ffmpeg: string; ffprobe: string } | null = null;
+
+async function resolveBinary(name: "ffmpeg" | "ffprobe"): Promise<string | null> {
+  for (const dir of EXTRA_BIN_DIRS) {
+    const candidate = path.join(dir, name);
+    try {
+      await access(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      /* try the next location */
+    }
+  }
   try {
-    await runCommand("ffmpeg", ["-version"], 10_000);
-    return true;
+    await runCommand(name, ["-version"], 10_000);
+    return name;
   } catch {
+    return null;
+  }
+}
+
+/** True when ffmpeg and ffprobe can be run (required for video). */
+export async function ffmpegAvailable(): Promise<boolean> {
+  const ffmpeg = await resolveBinary("ffmpeg");
+  const ffprobe = await resolveBinary("ffprobe");
+  if (!ffmpeg || !ffprobe) {
+    binaries = null;
     return false;
   }
+  binaries = { ffmpeg, ffprobe };
+  return true;
+}
+
+async function binary(name: "ffmpeg" | "ffprobe"): Promise<string> {
+  if (!binaries) {
+    const ok = await ffmpegAvailable();
+    if (!ok || !binaries) {
+      throw new Error(`${name} is not installed`);
+    }
+  }
+  return binaries[name];
 }
 
 function runCommand(
@@ -51,7 +88,7 @@ export type VideoProbe = {
 /** Probe duration / size with ffprobe. */
 export async function probeVideo(absPath: string): Promise<VideoProbe> {
   const { stdout } = await runCommand(
-    "ffprobe",
+    await binary("ffprobe"),
     [
       "-v",
       "quiet",
@@ -94,7 +131,7 @@ export async function transcodeToMp4(opts: {
   outputAbs: string;
 }): Promise<void> {
   await runCommand(
-    "ffmpeg",
+    await binary("ffmpeg"),
     [
       "-y",
       "-i",
@@ -130,7 +167,7 @@ export async function extractPoster(opts: {
 }): Promise<void> {
   try {
     await runCommand(
-      "ffmpeg",
+      await binary("ffmpeg"),
       [
         "-y",
         "-ss",
@@ -148,7 +185,7 @@ export async function extractPoster(opts: {
     await access(opts.outputAbs);
   } catch {
     await runCommand(
-      "ffmpeg",
+      await binary("ffmpeg"),
       [
         "-y",
         "-i",

@@ -98,7 +98,7 @@ export async function storeVideoFile(opts: {
   }
   if (!(await ffmpegAvailable())) {
     throw new Error(
-      "ffmpeg is not installed on this server. Install ffmpeg (see docs/unraid.md) to upload video.",
+      "ffmpeg is not installed. On a Mac, run `brew install ffmpeg`. The Docker image already includes it (see docs/unraid.md).",
     );
   }
 
