@@ -1,21 +1,15 @@
 import Link from "next/link";
 
+import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { getSessionUser } from "@/lib/session";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const user = await getSessionUser();
+
   return (
     <div className="relative flex min-h-full flex-1 flex-col overflow-hidden">
-      <header className="animate-fc-fade relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 sm:px-10">
-        <p className="font-display text-xl font-semibold tracking-tight text-ink sm:text-2xl">
-          Family Circles
-        </p>
-        <nav className="flex items-center gap-2 sm:gap-3">
-          <Button variant="ghost" render={<Link href="#about" />}>
-            About
-          </Button>
-          <Button render={<Link href="#start" />}>Get started</Button>
-        </nav>
-      </header>
+      <SiteHeader />
 
       <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 pb-20 pt-6 sm:px-10 sm:pb-28">
         <section className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
@@ -27,18 +21,27 @@ export default function HomePage() {
               A private place for family photos and stories — on your own
               server, shared only with the people you invite.
             </p>
-            <div className="mt-9 flex flex-wrap items-center gap-3" id="start">
-              <Button size="lg" render={<Link href="#start" />}>
-                Create your circle
-              </Button>
-              <Button size="lg" variant="outline" render={<Link href="#about" />}>
-                How it works
-              </Button>
+            <div className="mt-9 flex flex-wrap items-center gap-3">
+              {user ? (
+                <>
+                  <Button size="lg" render={<Link href="/home" />}>
+                    Go to your circles
+                  </Button>
+                  <Button size="lg" variant="outline" render={<Link href="/families/new" />}>
+                    Create a circle
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="lg" render={<Link href="/signup" />}>
+                    Create your circle
+                  </Button>
+                  <Button size="lg" variant="outline" render={<Link href="/login" />}>
+                    Sign in
+                  </Button>
+                </>
+              )}
             </div>
-            <p className="mt-5 text-sm text-ink-soft/80">
-              Auth and invites arrive in the next phase. This shell is the
-              foundation.
-            </p>
           </div>
 
           <div
@@ -78,10 +81,10 @@ export default function HomePage() {
             </p>
           </div>
           <div>
-            <h2 className="font-display text-2xl text-ink">Ready to grow</h2>
+            <h2 className="font-display text-2xl text-ink">Roles that fit</h2>
             <p className="mt-3 text-ink-soft leading-relaxed">
-              Schema is video-ready and federation-ready so later phases build
-              on this foundation.
+              Owners and adults manage the circle; collaborators follow and can
+              contribute when you invite them.
             </p>
           </div>
         </div>

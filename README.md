@@ -2,11 +2,10 @@
 
 Self-hosted family memory app. Private circles for photos and stories you keep on your own server (Unraid / Docker). Product name: **Family Circles**.
 
-Phase 0 ships the foundation: Next.js app shell, Postgres + Drizzle schema (video-ready and federation-ready), Docker Compose, and design tokens.
-
 ## Stack
 
 - Next.js (App Router) + TypeScript + Tailwind CSS + shadcn/ui
+- Auth.js (email + password)
 - Postgres + Drizzle ORM
 - Docker Compose (`app` + `db`, media volume at `/data`)
 
@@ -14,17 +13,25 @@ Phase 0 ships the foundation: Next.js app shell, Postgres + Drizzle schema (vide
 
 ```bash
 cp .env.example .env
+# set AUTH_SECRET to a long random string
 npm install
-# Start Postgres (Docker) or point DATABASE_URL at your own instance
+# Start Postgres (Docker) or use a local Postgres matching DATABASE_URL
 docker compose up -d db
-npm run db:generate   # optional after schema edits
-npm run db:migrate    # when migrations exist
-npm run dev -- -p 43127
+npm run db:migrate
+npm run dev
 ```
 
 Open [http://127.0.0.1:43127](http://127.0.0.1:43127).
 
-Required env vars are listed in `.env.example` (`DATABASE_URL`, `AUTH_SECRET`, `APP_URL`, `DATA_DIR`, VAPID placeholders).
+### Try Phase 1 (auth & circles)
+
+1. **Create account** at `/signup` (email + password, 8+ chars).
+2. **Create a circle** from Home → New circle (you become **owner**).
+3. On the circle page, **Create invite link** as family member (adult) or collaborator (follower).
+4. Open the invite URL in another browser/profile, sign up or sign in, **Accept invite**.
+5. Or **Browse** circles and **Follow as collaborator** on a circle you do not own.
+
+Required env vars: `.env.example` (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL` / `APP_URL`, `DATA_DIR`, VAPID placeholders).
 
 ## Run with Docker Compose
 
@@ -43,11 +50,12 @@ docker compose up --build
 | Path | Purpose |
 | --- | --- |
 | `app/` | Next.js routes and pages |
+| `auth.ts` | Auth.js configuration |
 | `components/` | UI (shadcn under `components/ui/`) |
 | `db/` | Drizzle schema + client |
-| `lib/` | Shared utilities and env helpers |
+| `lib/actions/` | Server actions (auth, families) |
 | `AGENTS.md` | Architecture map for agents / IDEs |
 
-## Phases (not in this commit)
+## What’s next
 
-Auth, invites, posts, throwbacks, PWA, export, video UI, and ActivityPub federation are later phases. Schema already reserves `media.kind` (`image` \| `video`) and remote actor fields (`remoteUri`, `instanceHost`, inbox/outbox).
+Phase 2+: memories/posts, throwbacks, PWA, export, video UI, ActivityPub federation. Schema already reserves `media.kind` and remote actor fields.
