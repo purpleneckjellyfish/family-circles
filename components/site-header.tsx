@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
 
-import { AppMenu, type MenuCircle } from "@/components/app-menu";
+import { AppMenu, type MenuCircle, type MenuShortcut } from "@/components/app-menu";
 import { Button } from "@/components/ui/button";
 import { families, familyMemberships, follows, getDb } from "@/db";
+import { listLookbackIndex } from "@/lib/browse";
 import { getSessionUser } from "@/lib/session";
 
 async function loadMenuCircles(userId: string): Promise<MenuCircle[]> {
@@ -49,6 +51,9 @@ async function loadMenuCircles(userId: string): Promise<MenuCircle[]> {
 export async function SiteHeader() {
   const user = await getSessionUser();
   const circles = user?.id ? await loadMenuCircles(user.id) : [];
+  const lookback = user?.id
+    ? await listLookbackIndex(user.id)
+    : { events: [] as MenuShortcut[], people: [] as MenuShortcut[] };
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur-md">
@@ -73,11 +78,15 @@ export async function SiteHeader() {
                 Settings
               </Button>
             </nav>
-            <AppMenu
-              signedIn
-              name={user.name ?? user.email}
-              circles={circles}
-            />
+            <Suspense fallback={<span className="inline-block size-11 md:hidden" />}>
+              <AppMenu
+                signedIn
+                name={user.name ?? user.email}
+                circles={circles}
+                events={lookback.events}
+                people={lookback.people}
+              />
+            </Suspense>
           </>
         ) : (
           <>
@@ -87,7 +96,9 @@ export async function SiteHeader() {
               </Button>
               <Button render={<Link href="/signup" />}>Create account</Button>
             </nav>
-            <AppMenu signedIn={false} circles={[]} />
+            <Suspense fallback={<span className="inline-block size-11 md:hidden" />}>
+              <AppMenu signedIn={false} circles={[]} events={[]} people={[]} />
+            </Suspense>
           </>
         )}
       </div>

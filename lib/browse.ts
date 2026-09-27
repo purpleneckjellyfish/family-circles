@@ -3,6 +3,9 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import {
   albumPosts,
   albums,
+  families,
+  familyMemberships,
+  follows,
   getDb,
   media,
   people,
@@ -10,6 +13,7 @@ import {
   posts,
 } from "@/db";
 import { loadPostsByIds, moderateFamilyIds, type FeedPost } from "@/lib/feed";
+import { occasionBrowseTitle, occasionHref } from "@/lib/occasions";
 
 function effectiveYearExpr() {
   // Prefer memory_date year; fall back to posted_at calendar date (UTC).
@@ -97,7 +101,7 @@ export async function loadPostsForPerson(opts: {
         eq(posts.familyId, opts.familyId),
       ),
     )
-    .orderBy(desc(posts.postedAt));
+    .orderBy(desc(happenedOn()), desc(posts.postedAt));
 
   return loadPostsByIds({
     userId: opts.userId,
@@ -179,12 +183,108 @@ export async function loadPostsForOccasion(opts: {
     .select({ id: posts.id })
     .from(posts)
     .where(and(...conditions))
-    .orderBy(desc(posts.postedAt));
+    .orderBy(desc(happenedOn()), desc(posts.postedAt));
 
   return loadPostsByIds({
     userId: opts.userId,
     postIds: rows.map((r) => r.id),
   });
+}
+
+function happenedOn() {
+  return sql`coalesce(${posts.memoryDate}, (${posts.postedAt} at time zone 'UTC')::date)`;
+}
+
+function memoryCount(count: number) {
+  return count === 1 ? "1 memory" : `${count} memories`;
+}
+
+export type LookbackShortcut = {
+  href: string;
+  title: string;
+  detail: string;
+};
+
+/** Occasions and tagged people across every circle the viewer can open. */
+export async function listLookbackIndex(userId: string): Promise<{
+  events: LookbackShortcut[];
+  people: LookbackShortcut[];
+}> {
+  const db = getDb();
+  const memberships = await db
+    .select({
+      id: families.id,
+      name: families.name,
+      slug: families.slug,
+    })
+    .from(familyMemberships)
+    .innerJoin(families, eq(families.id, familyMemberships.familyId))
+    .where(eq(familyMemberships.userId, userId));
+
+  const following = await db
+    .select({
+      id: families.id,
+      name: families.name,
+      slug: families.slug,
+    })
+    .from(follows)
+    .innerJoin(families, eq(families.id, follows.familyId))
+    .where(
+      and(eq(follows.followerUserId, userId), eq(follows.status, "accepted")),
+    );
+
+  const circles = new Map<string, { id: string; name: string; slug: string }>();
+  for (const circle of [...memberships, ...following]) {
+    circles.set(circle.id, circle);
+  }
+
+  const buckets = await Promise.all(
+    [...circles.values()].map(async (circle) => {
+      const [occasions, peopleRows] = await Promise.all([
+        listOccasionsWithPostCounts(circle.id, userId),
+        listPeopleWithPostCounts(circle.id),
+      ]);
+      return { circle, occasions, peopleRows };
+    }),
+  );
+
+  const several = circles.size > 1;
+  const events: Array<LookbackShortcut & { year: number }> = [];
+  const peopleShortcuts: LookbackShortcut[] = [];
+
+  for (const { circle, occasions, peopleRows } of buckets) {
+    for (const occasion of occasions) {
+      if (occasion.year == null) continue;
+      events.push({
+        href: occasionHref(circle.slug, occasion.occasion, occasion.year),
+        title: occasionBrowseTitle(occasion.occasion, occasion.year),
+        detail: several
+          ? `${circle.name} · ${memoryCount(occasion.postCount)}`
+          : memoryCount(occasion.postCount),
+        year: occasion.year,
+      });
+    }
+    for (const person of peopleRows) {
+      if (person.postCount < 1) continue;
+      peopleShortcuts.push({
+        href: `/families/${circle.slug}/browse/people/${person.id}`,
+        title: person.displayName,
+        detail: several
+          ? `${circle.name} · ${memoryCount(person.postCount)}`
+          : memoryCount(person.postCount),
+      });
+    }
+  }
+
+  events.sort(
+    (a, b) => b.year - a.year || a.title.localeCompare(b.title),
+  );
+  peopleShortcuts.sort((a, b) => a.title.localeCompare(b.title));
+
+  return {
+    events: events.map(({ href, title, detail }) => ({ href, title, detail })),
+    people: peopleShortcuts,
+  };
 }
 
 export type ExportMemory = {

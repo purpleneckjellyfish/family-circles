@@ -60,13 +60,11 @@ export default async function BrowsePersonPage({
         <h1 className="mt-4 font-display text-4xl font-semibold text-ink">
           {person.displayName}
         </h1>
-        {person.birthday ? (
-          <p className="mt-2 text-ink-soft">Birthday {person.birthday}</p>
-        ) : (
-          <p className="mt-2 text-ink-soft">
-            Memories tagged with {person.displayName}.
-          </p>
-        )}
+        <p className="mt-2 text-ink-soft">
+          {person.birthday
+            ? `${person.displayName}'s timeline, newest first · birthday ${person.birthday}.`
+            : `${person.displayName}'s timeline, newest first.`}
+        </p>
 
         <div className="mt-8 space-y-4">
           {posts.length === 0 ? (

@@ -10,15 +10,9 @@ import {
   listYearsWithPostCounts,
 } from "@/lib/browse";
 import { requireFamilyView } from "@/lib/family-access";
+import { occasionBrowseTitle, occasionHref } from "@/lib/occasions";
 
 export const metadata = { title: "Browse" };
-
-const OCCASION_LABELS: Record<string, string> = {
-  christmas: "Christmas",
-  birthday: "Birthday",
-  easter: "Easter",
-  other: "Other",
-};
 
 export default async function FamilyBrowsePage({
   params,
@@ -63,11 +57,11 @@ export default async function FamilyBrowsePage({
               {occasionRows.map((o) => (
                 <li key={`${o.occasion}-${o.year}`}>
                   <Link
-                    href={`/families/${slug}/browse/occasions/${o.occasion}?year=${o.year}`}
+                    href={occasionHref(slug, o.occasion, o.year)}
                     className="flex flex-col rounded-xl border border-border/80 bg-card/50 px-4 py-3 hover:border-forest/40"
                   >
                     <span className="font-display text-xl text-ink">
-                      {OCCASION_LABELS[o.occasion] ?? o.occasion} {o.year}
+                      {occasionBrowseTitle(o.occasion, o.year)}
                     </span>
                     <span className="text-sm text-ink-soft">
                       {o.postCount === 1

@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { SiteHeader } from "@/components/site-header";
 import { ThrowbacksPanel } from "@/components/throwbacks-panel";
 import { familyMemberships, getDb } from "@/db";
+import { listLookbackIndex, type LookbackShortcut } from "@/lib/browse";
 import { canModerate } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 import { loadThrowbacks } from "@/lib/throwbacks";
@@ -26,8 +27,9 @@ export default async function ThrowbacksPage() {
     memberships.filter((m) => canModerate(m.role)).map((m) => m.familyId),
   );
 
+  const lookback = await listLookbackIndex(user.id!);
   const [y, m, d] = data.today.split("-").map(Number);
-  const nice = new Date(y!, m! - 1, d!).toLocaleDateString(undefined, {
+  const nice = new Date(y!, m! - 1, d!).toLocaleDateString("en-GB", {
     month: "long",
     day: "numeric",
   });
@@ -45,8 +47,8 @@ export default async function ThrowbacksPage() {
           Throwbacks
         </h1>
         <p className="mt-2 text-ink-soft">
-          Prior-year memories for this calendar day, plus birthdays and
-          anniversaries in your circles.
+          On this day, then the events and people you can open as their own
+          timeline. The home feed stays in order.
         </p>
         <div className="mt-8">
           <ThrowbacksPanel
@@ -56,7 +58,55 @@ export default async function ThrowbacksPage() {
             moderateFamilyIds={moderateIds}
           />
         </div>
+
+        <LookbackList
+          id="events"
+          title="Events"
+          empty="Tag a memory with Christmas, a birthday, or another occasion and that year will show up here."
+          items={lookback.events}
+        />
+        <LookbackList
+          id="people"
+          title="People"
+          empty="Tag someone on a memory and their photos will line up here, newest first."
+          items={lookback.people}
+        />
       </main>
     </div>
+  );
+}
+
+function LookbackList({
+  id,
+  title,
+  empty,
+  items,
+}: {
+  id: string;
+  title: string;
+  empty: string;
+  items: LookbackShortcut[];
+}) {
+  return (
+    <section id={id} className="mt-14">
+      <h2 className="font-display text-2xl text-ink">{title}</h2>
+      {items.length === 0 ? (
+        <p className="mt-3 text-ink-soft">{empty}</p>
+      ) : (
+        <ul className="mt-4 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
+          {items.map((item) => (
+            <li key={item.href}>
+              <Link
+                href={item.href}
+                className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-paper-deep/40"
+              >
+                <span className="font-display text-xl text-ink">{item.title}</span>
+                <span className="shrink-0 text-sm text-ink-soft">{item.detail}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

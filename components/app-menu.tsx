@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 import { logoutAction } from "@/lib/actions/auth";
@@ -16,10 +16,15 @@ export type MenuCircle = {
   badge: string;
 };
 
+export type MenuShortcut = {
+  href: string;
+  title: string;
+  detail: string;
+};
+
 const appLinks = [
   { href: "/home", label: "Home" },
   { href: "/throwbacks", label: "Throwbacks" },
-  { href: "/browse", label: "Browse" },
   { href: "/settings", label: "Settings" },
 ] as const;
 
@@ -35,12 +40,17 @@ export function AppMenu({
   signedIn,
   name,
   circles,
+  events,
+  people,
 }: {
   signedIn: boolean;
   name?: string | null;
   circles: MenuCircle[];
+  events: MenuShortcut[];
+  people: MenuShortcut[];
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -123,6 +133,24 @@ export function AppMenu({
             </>
           )}
         </div>
+
+        {signedIn ? (
+          <ShortcutList
+            title="Events"
+            empty="Tag a memory with Christmas, a birthday, or another occasion and it will show up here."
+            items={events}
+            isCurrent={(href) => samePlace(pathname, searchParams, href)}
+          />
+        ) : null}
+
+        {signedIn ? (
+          <ShortcutList
+            title="People"
+            empty="Tag someone on a memory to open just their timeline."
+            items={people}
+            isCurrent={(href) => samePlace(pathname, searchParams, href)}
+          />
+        ) : null}
 
         {circleSlug ? (
           <section className="mt-8">
@@ -220,5 +248,64 @@ export function AppMenu({
       </button>
       {mounted && panel ? createPortal(panel, document.body) : null}
     </div>
+  );
+}
+
+function samePlace(
+  pathname: string,
+  searchParams: { get: (key: string) => string | null },
+  href: string,
+) {
+  const [path, query = ""] = href.split("?");
+  if (pathname !== path) return false;
+  const want = new URLSearchParams(query);
+  for (const [key, value] of want) {
+    if (searchParams.get(key) !== value) return false;
+  }
+  return true;
+}
+
+function ShortcutList({
+  title,
+  empty,
+  items,
+  isCurrent,
+}: {
+  title: string;
+  empty: string;
+  items: MenuShortcut[];
+  isCurrent: (href: string) => boolean;
+}) {
+  return (
+    <section className="mt-8">
+      <h2 className="px-3 text-xs font-medium tracking-wide text-ink-soft uppercase">
+        {title}
+      </h2>
+      {items.length === 0 ? (
+        <p className="mt-2 px-3 text-sm text-ink-soft">{empty}</p>
+      ) : (
+        <ul className="mt-2 flex flex-col gap-1">
+          {items.map((item) => {
+            const current = isCurrent(item.href);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className={linkClass(current)}
+                  aria-current={current ? "page" : undefined}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">{item.title}</span>
+                    <span className="block truncate text-xs text-ink-soft">
+                      {item.detail}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
