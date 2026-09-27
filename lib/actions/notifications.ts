@@ -76,7 +76,7 @@ export async function saveNotificationPrefsAction(
       },
     });
 
-  revalidatePath("/settings/notifications");
+  revalidatePath("/settings");
   return { success: "saved" };
 }
 

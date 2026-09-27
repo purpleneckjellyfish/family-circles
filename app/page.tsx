@@ -15,7 +15,7 @@ export default async function HomePage() {
         aria-hidden
       >
         <div className="absolute inset-0 animate-fc-soft-zoom bg-[radial-gradient(ellipse_80%_60%_at_70%_40%,#8fa99a_0%,transparent_55%),linear-gradient(135deg,#cbb89a_0%,#d9e5dc_42%,#6f8f7c_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(243,239,230,0.55),transparent_45%)]" />
+        <div className="absolute inset-0 animate-fc-drift bg-[radial-gradient(circle_at_20%_80%,rgba(243,239,230,0.55),transparent_45%)]" />
         <div className="absolute inset-0 bg-gradient-to-r from-paper via-paper/85 to-paper/25 sm:via-paper/70" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-paper-deep/80 to-transparent" />
       </div>

@@ -237,7 +237,7 @@ export function InviteForm({
         </p>
       ) : null}
       {inviteUrl && state.success ? (
-        <div className="rounded-lg border border-border bg-card/70 p-3">
+        <div className="animate-fc-fade rounded-lg border border-border bg-card/70 p-3">
           <p className="text-sm text-ink-soft">
             Share this link (expires in 14 days):
           </p>

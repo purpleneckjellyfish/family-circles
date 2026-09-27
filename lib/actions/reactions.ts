@@ -16,10 +16,8 @@ import {
   canCommentOrReact,
   getMembership,
 } from "@/lib/permissions";
+import { REACTION_EMOJIS } from "@/lib/reactions";
 import { requireUser } from "@/lib/session";
-
-export const REACTION_EMOJIS = ["👍", "❤️", "😂", "😮", "😢"] as const;
-export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
 
 const emojiSchema = z.enum(REACTION_EMOJIS);
 

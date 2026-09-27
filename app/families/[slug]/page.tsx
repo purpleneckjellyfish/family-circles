@@ -3,11 +3,7 @@ import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 
 import { SiteHeader } from "@/components/site-header";
-import {
-  FollowButton,
-  FollowerCanPostToggle,
-  InviteForm,
-} from "@/components/family-forms";
+import { FollowButton } from "@/components/family-forms";
 import { FamilySubnav } from "@/components/family-subnav";
 import { PostCard } from "@/components/post-card";
 import { EmptyState } from "@/components/ui-states";
@@ -22,14 +18,12 @@ import {
 import { loadFeedPosts } from "@/lib/feed";
 import { env } from "@/lib/env";
 import { ensureLocalFamilyActor, isLocalFamily } from "@/lib/federation/actor";
-import { familyActorUrl, webfingerAcct } from "@/lib/federation/urls";
 import {
   canCreatePost,
   canDeletePost,
   canEditPost,
   canModerate,
   isFamilyMember,
-  isOwner,
 } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 
@@ -63,9 +57,8 @@ export default async function FamilyPage({
   if (!family) notFound();
 
   const remoteCircle = !isLocalFamily(family);
-  let localActor = family;
   if (!remoteCircle) {
-    localActor = await ensureLocalFamilyActor(family.id);
+    await ensureLocalFamilyActor(family.id);
   }
 
   const members = await db
@@ -81,9 +74,7 @@ export default async function FamilyPage({
     .where(eq(familyMemberships.familyId, family.id));
 
   const myMembership = members.find((m) => m.id === user.id);
-  const canInvite = !remoteCircle && canModerate(myMembership?.role);
   const familyMember = isFamilyMember(myMembership?.role);
-  const ownerViewer = isOwner(myMembership?.role);
   const mayPost =
     !remoteCircle && (await canCreatePost(user.id!, family.id));
   const viewerCanModerate = !remoteCircle && canModerate(myMembership?.role);
@@ -204,19 +195,6 @@ export default async function FamilyPage({
           </section>
         ) : null}
 
-        {!remoteCircle && canInvite ? (
-          <p className="mt-4 text-xs text-ink-soft">
-            Federated actor:{" "}
-            <code className="text-[0.7rem]">
-              {localActor.remoteUri || familyActorUrl(localActor.slug)}
-            </code>
-            {" · "}
-            <code className="text-[0.7rem]">
-              {webfingerAcct(localActor.slug)}
-            </code>
-          </p>
-        ) : null}
-
         {canView ? (
           <FamilySubnav slug={slug} active="feed" />
         ) : (
@@ -263,54 +241,6 @@ export default async function FamilyPage({
           </section>
         ) : null}
 
-        <section className="mt-10">
-          <h2 className="font-display text-2xl text-ink">People in the circle</h2>
-          <p className="mt-2 text-sm text-ink-soft">
-            Followers comment and react freely. Only the owner can grant photo
-            posting per person.
-          </p>
-          <ul className="mt-4 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
-            {members.map((m) => (
-              <li
-                key={m.id}
-                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-              >
-                <div>
-                  <p className="text-ink">{m.name}</p>
-                  <p className="text-sm text-ink-soft">{m.email}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  {ownerViewer && m.role === "follower" ? (
-                    <FollowerCanPostToggle
-                      familyId={family.id}
-                      userId={m.id}
-                      canPost={m.canPost}
-                      name={m.name}
-                    />
-                  ) : m.role === "follower" && m.canPost ? (
-                    <span className="text-xs text-forest">Can add photos</span>
-                  ) : null}
-                  <span className="text-xs uppercase tracking-wide text-ink-soft">
-                    {m.role}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        {canInvite ? (
-          <section className="mt-10">
-            <h2 className="font-display text-2xl text-ink">Invites</h2>
-            <p className="mt-2 text-sm text-ink-soft">
-              Family members join as adults. Collaborators join as followers —
-              quiet by default until you grant photo posting.
-            </p>
-            <div className="mt-4">
-              <InviteForm familyId={family.id} appUrl={env.appUrl} />
-            </div>
-          </section>
-        ) : null}
       </main>
     </div>
   );

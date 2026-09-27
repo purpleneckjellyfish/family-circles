@@ -10,7 +10,8 @@ import {
   unhidePostAction,
   updatePostAction,
 } from "@/lib/actions/posts";
-import { setReactionAction, REACTION_EMOJIS } from "@/lib/actions/reactions";
+import { setReactionAction } from "@/lib/actions/reactions";
+import { REACTION_EMOJIS } from "@/lib/reactions";
 import type { ActionState } from "@/lib/actions/auth";
 import type { FeedPost } from "@/lib/feed";
 import { Button } from "@/components/ui/button";
@@ -107,20 +108,13 @@ export function PostCard({
   return (
     <article
       className={cn(
-        "animate-fc-rise overflow-hidden rounded-xl border bg-card/60 shadow-[0_18px_40px_-32px_rgba(31,26,20,0.45)] transition-[border-color,box-shadow] duration-300 hover:border-forest/35",
+        "fc-photo-lift animate-fc-rise overflow-hidden rounded-xl border bg-card/60 hover:border-forest/35",
         throwbackYearsAgo != null
           ? "border-forest/30 bg-forest-soft/20"
           : "border-border/80",
       )}
       style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
     >
-      {throwbackYearsAgo != null ? (
-        <div className="border-b border-forest/20 bg-forest-soft/40 px-4 py-2 text-sm text-forest">
-          On this day · {throwbackYearsAgo}{" "}
-          {throwbackYearsAgo === 1 ? "year" : "years"} ago
-        </div>
-      ) : null}
-
       {hasMedia ? (
         <div
           className={
@@ -193,10 +187,16 @@ export function PostCard({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {throwbackYearsAgo != null ? (
+              <span className="fc-sticker">
+                On this day · {throwbackYearsAgo}{" "}
+                {throwbackYearsAgo === 1 ? "year" : "years"} ago
+              </span>
+            ) : null}
             {occasion ? (
               <Link
                 href={`/families/${post.familySlug}/browse/occasions/${post.occasion}${post.memoryDate ? `?year=${post.memoryDate.slice(0, 4)}` : ""}`}
-                className="rounded-md bg-muted px-2 py-0.5 text-xs text-ink-soft transition hover:bg-forest-soft hover:text-forest"
+                className="fc-sticker transition hover:bg-forest hover:text-primary-foreground"
               >
                 {occasion}
               </Link>
@@ -321,9 +321,9 @@ export function PostCard({
                     type="submit"
                     disabled={reactPending}
                     className={cn(
-                      "inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm transition",
+                      "inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm transition duration-200",
                       mine
-                        ? "bg-forest-soft text-forest ring-1 ring-forest/30"
+                        ? "fc-react-on bg-forest-soft text-forest ring-1 ring-forest/30"
                         : "bg-muted/60 text-ink hover:bg-forest-soft/50",
                     )}
                     aria-label={`React ${emoji}`}

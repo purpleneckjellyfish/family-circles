@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { logoutAction } from "@/lib/actions/auth";
 import { getSessionUser } from "@/lib/session";
 import { Button } from "@/components/ui/button";
 
@@ -27,17 +26,9 @@ export async function SiteHeader() {
             <Button variant="ghost" render={<Link href="/throwbacks" />}>
               Throwbacks
             </Button>
-            <Button
-              variant="ghost"
-              render={<Link href="/settings/notifications" />}
-            >
-              Alerts
+            <Button variant="ghost" render={<Link href="/settings" />}>
+              Settings
             </Button>
-            <form action={logoutAction}>
-              <Button type="submit" variant="outline">
-                Sign out
-              </Button>
-            </form>
           </>
         ) : (
           <>

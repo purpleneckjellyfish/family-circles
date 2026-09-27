@@ -246,7 +246,7 @@ export default async function AppHomePage() {
                 <li key={f.id}>
                   <Link
                     href={`/families/${f.slug}`}
-                    className="block rounded-xl border border-border/80 bg-card/60 px-4 py-3 transition hover:border-forest/40"
+                    className="block rounded-xl border border-border/80 bg-card/60 px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-forest/40 hover:shadow-[0_14px_28px_-22px_rgba(31,26,20,0.5)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="font-display text-xl text-ink">
@@ -288,7 +288,7 @@ export default async function AppHomePage() {
                 <li key={f.id}>
                   <Link
                     href={`/families/${f.slug}`}
-                    className="block rounded-xl border border-border/80 bg-card/60 px-4 py-3 transition hover:border-forest/40"
+                    className="block rounded-xl border border-border/80 bg-card/60 px-4 py-3 transition duration-300 ease-out hover:-translate-y-0.5 hover:border-forest/40 hover:shadow-[0_14px_28px_-22px_rgba(31,26,20,0.5)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
                   >
                     <div className="flex items-baseline justify-between gap-3">
                       <span className="font-display text-xl text-ink">

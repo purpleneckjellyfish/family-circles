@@ -6,7 +6,7 @@ const links = [
   { suffix: "/people", label: "People" },
   { suffix: "/albums", label: "Albums" },
   { suffix: "/milestones", label: "Milestones" },
-  { suffix: "/export", label: "Export" },
+  { suffix: "/settings", label: "Settings" },
 ] as const;
 
 /** Shared circle sub-nav for feed / browse / export and admin lists. */
@@ -21,7 +21,7 @@ export function FamilySubnav({
     | "people"
     | "albums"
     | "milestones"
-    | "export";
+    | "settings";
 }) {
   return (
     <nav className="mt-6 flex flex-wrap gap-3 text-sm">

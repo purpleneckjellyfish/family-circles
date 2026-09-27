@@ -37,7 +37,7 @@ export default async function FamilyExportPage({
           Download a ZIP of original photos plus captions, memory dates, people
           tags, and album names (JSON and CSV).
         </p>
-        <FamilySubnav slug={slug} active="export" />
+        <FamilySubnav slug={slug} active="settings" />
 
         <section className="mt-10 rounded-xl border border-border/80 bg-card/50 p-5">
           <p className="text-ink">

@@ -17,7 +17,6 @@ import {
   posts,
 } from "@/db";
 import type { ActionState } from "@/lib/actions/auth";
-import { memoryDateFromImageBytes } from "@/lib/exif";
 import { removeMediaFiles, storeImageFile, storeVideoFile } from "@/lib/media-storage";
 import {
   canCreatePost,
@@ -140,7 +139,6 @@ export async function createPostAction(
     height: number | null;
     durationMs: number | null;
     sortOrder: number;
-    exifDate: string | null;
   }> = [];
 
   try {
@@ -162,7 +160,6 @@ export async function createPostAction(
       } catch {
         /* keep nulls if sharp cannot decode */
       }
-      const exifDate = await memoryDateFromImageBytes(bytes);
       stored.push({
         kind: "image",
         storagePath,
@@ -171,7 +168,6 @@ export async function createPostAction(
         height,
         durationMs: null,
         sortOrder: order,
-        exifDate,
       });
       order += 1;
     }
@@ -192,7 +188,6 @@ export async function createPostAction(
         height: video.height,
         durationMs: video.durationMs,
         sortOrder: order,
-        exifDate: null,
       });
       order += 1;
     }
@@ -202,20 +197,6 @@ export async function createPostAction(
       error:
         err instanceof Error ? err.message : "Could not store photos or video.",
     };
-  }
-
-  if (!memoryDate) {
-    const exifDates = stored
-      .map((s) => s.exifDate)
-      .filter((d): d is string => Boolean(d))
-      .sort();
-    if (exifDates[0]) {
-      memoryDate = exifDates[0];
-      await db
-        .update(posts)
-        .set({ memoryDate, updatedAt: new Date() })
-        .where(eq(posts.id, post.id));
-    }
   }
 
   if (stored.length > 0) {

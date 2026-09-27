@@ -1,17 +1,17 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ImagePlus,
   PartyPopper,
   Users,
   Video,
+  X,
 } from "lucide-react";
 
 import { createPostAction } from "@/lib/actions/posts";
 import type { ActionState } from "@/lib/actions/auth";
-import { earliestExifDateFromFiles } from "@/lib/exif";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui-states";
 import { Input } from "@/components/ui/input";
@@ -20,12 +20,30 @@ import { cn } from "@/lib/utils";
 
 const initial: ActionState = {};
 
+/** Local calendar day, so evening posts stay on today rather than UTC. */
+function todayLocal() {
+  const d = new Date();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
 export type ComposerCircle = {
   id: string;
   slug: string;
   name: string;
   people: Array<{ id: string; displayName: string }>;
   albums: Array<{ id: string; title: string }>;
+};
+
+const MAX_PHOTOS = 12;
+const MAX_VIDEOS = 3;
+
+type DraftMedia = {
+  id: string;
+  file: File;
+  url: string;
+  kind: "image" | "video";
 };
 
 const OCCASIONS = [
@@ -51,9 +69,10 @@ export function ComposePostForm({
     defaultFamilyId ?? circles[0]?.id ?? "",
   );
   const [memoryDate, setMemoryDate] = useState("");
-  const [exifHint, setExifHint] = useState<string | null>(null);
-  const [photoCount, setPhotoCount] = useState(0);
-  const [videoCount, setVideoCount] = useState(0);
+  const [drafts, setDrafts] = useState<DraftMedia[]>([]);
+  const [mediaNote, setMediaNote] = useState<string | null>(null);
+  const draftsRef = useRef(drafts);
+  draftsRef.current = drafts;
   const [personQuery, setPersonQuery] = useState("");
   const [selectedPeople, setSelectedPeople] = useState<string[]>([]);
   const [occasion, setOccasion] = useState<string>("none");
@@ -69,6 +88,12 @@ export function ComposePostForm({
     [circles, familyId],
   );
 
+  useEffect(() => {
+    return () => {
+      for (const item of draftsRef.current) URL.revokeObjectURL(item.url);
+    };
+  }, []);
+
   const filteredPeople = useMemo(() => {
     if (!active) return [];
     const q = personQuery.trim().toLowerCase();
@@ -82,6 +107,43 @@ export function ComposePostForm({
     return null;
   }
 
+  const today = todayLocal();
+  const customDate = memoryDate !== "" && memoryDate !== today;
+
+  const photoCount = drafts.filter((item) => item.kind === "image").length;
+  const videoCount = drafts.filter((item) => item.kind === "video").length;
+
+  function addDrafts(list: File[], kind: DraftMedia["kind"]) {
+    const cap = kind === "image" ? MAX_PHOTOS : MAX_VIDEOS;
+    const have = draftsRef.current.filter((item) => item.kind === kind).length;
+    const room = Math.max(0, cap - have);
+    const accepted = list.slice(0, room);
+    setMediaNote(
+      list.length > accepted.length
+        ? kind === "image"
+          ? `Up to ${MAX_PHOTOS} photos in one memory.`
+          : `Up to ${MAX_VIDEOS} videos in one memory.`
+        : null,
+    );
+    if (accepted.length === 0) return;
+    const next = accepted.map((file) => ({
+      id: crypto.randomUUID(),
+      file,
+      url: URL.createObjectURL(file),
+      kind,
+    }));
+    setDrafts((prev) => [...prev, ...next]);
+  }
+
+  function removeDraft(id: string) {
+    setDrafts((prev) => {
+      const hit = prev.find((item) => item.id === id);
+      if (hit) URL.revokeObjectURL(hit.url);
+      return prev.filter((item) => item.id !== id);
+    });
+    setMediaNote(null);
+  }
+
   function togglePerson(id: string) {
     setSelectedPeople((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
@@ -90,7 +152,15 @@ export function ComposePostForm({
 
   return (
     <form
-      action={action}
+      action={(formData) => {
+        for (const item of draftsRef.current) {
+          formData.append(
+            item.kind === "image" ? "photos" : "videos",
+            item.file,
+          );
+        }
+        action(formData);
+      }}
       className={cn(
         "animate-fc-rise overflow-hidden rounded-xl border border-border/80 bg-card/70 shadow-[0_18px_40px_-32px_rgba(31,26,20,0.4)]",
         compact ? "p-4 sm:p-5" : "p-5 sm:p-6",
@@ -132,6 +202,57 @@ export function ComposePostForm({
         maxLength={8000}
         className="border-0 bg-transparent px-0 text-base shadow-none focus-visible:ring-0"
       />
+
+      {drafts.length > 0 ? (
+        <div
+          className={cn(
+            "mt-3 overflow-hidden rounded-lg",
+            drafts.length === 1
+              ? "grid grid-cols-1"
+              : drafts.length === 2
+                ? "grid grid-cols-2 gap-1"
+                : "grid grid-cols-2 gap-1 sm:grid-cols-3",
+          )}
+        >
+          {drafts.map((item) => (
+            <div
+              key={item.id}
+              className="relative aspect-[4/3] overflow-hidden bg-paper-deep"
+            >
+              {item.kind === "image" ? (
+                // Local preview only — revoked when the draft is removed.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.url}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <video
+                  src={item.url}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                  controls
+                />
+              )}
+              <button
+                type="button"
+                aria-label={
+                  item.kind === "image" ? "Remove photo" : "Remove video"
+                }
+                onClick={() => removeDraft(item.id)}
+                className="absolute top-1.5 right-1.5 inline-flex size-7 items-center justify-center rounded-full bg-ink/75 text-paper transition hover:bg-ink"
+              >
+                <X className="size-3.5" aria-hidden />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {mediaNote ? (
+        <p className="mt-2 text-xs text-ink-soft">{mediaNote}</p>
+      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-border/60 pt-3">
         <button
@@ -196,7 +317,7 @@ export function ComposePostForm({
           onClick={() => setShowDate((v) => !v)}
         >
           <CalendarDays className="size-4" aria-hidden />
-          Date
+          {customDate ? memoryDate : "Today"}
         </button>
         {active.albums.length > 0 ? (
           <button
@@ -225,33 +346,27 @@ export function ComposePostForm({
 
       <input
         ref={photoRef}
-        name="photos"
         type="file"
         accept="image/*"
         multiple
         className="sr-only"
-        onChange={async (e) => {
+        onChange={(e) => {
           const list = e.target.files ? Array.from(e.target.files) : [];
-          setPhotoCount(list.length);
-          const earliest = await earliestExifDateFromFiles(list);
-          if (earliest) {
-            setMemoryDate(earliest);
-            setShowDate(true);
-            setExifHint(`From photo EXIF: ${earliest}`);
-          } else if (list.length) {
-            setExifHint("No EXIF date — set one if you know it.");
-            setShowDate(true);
-          }
+          if (list.length) addDrafts(list, "image");
+          e.target.value = "";
         }}
       />
       <input
         ref={videoRef}
-        name="videos"
         type="file"
         accept="video/mp4,video/quicktime,video/webm,video/*"
         multiple
         className="sr-only"
-        onChange={(e) => setVideoCount(e.target.files?.length ?? 0)}
+        onChange={(e) => {
+          const list = e.target.files ? Array.from(e.target.files) : [];
+          if (list.length) addDrafts(list, "video");
+          e.target.value = "";
+        }}
       />
 
       {showPeople ? (
@@ -333,26 +448,28 @@ export function ComposePostForm({
         <input type="hidden" name="occasion" value={occasion} />
       )}
 
+      <input
+        type="hidden"
+        name="memoryDate"
+        value={customDate ? memoryDate : ""}
+      />
       {showDate ? (
         <div className="mt-3 space-y-1 rounded-lg border border-border/60 bg-paper/40 p-3">
           <label className="text-xs text-ink-soft" htmlFor="memoryDate">
-            Memory date
+            When it happened
           </label>
           <Input
             id="memoryDate"
-            name="memoryDate"
             type="date"
-            value={memoryDate}
+            value={memoryDate || today}
             onChange={(e) => setMemoryDate(e.target.value)}
             className="h-8 max-w-xs"
           />
-          {exifHint ? (
-            <p className="text-xs text-ink-soft">{exifHint}</p>
-          ) : null}
+          <p className="text-xs text-ink-soft">
+            Today unless you choose another day.
+          </p>
         </div>
-      ) : (
-        <input type="hidden" name="memoryDate" value={memoryDate} />
-      )}
+      ) : null}
 
       {showAlbum && active.albums.length > 0 ? (
         <div className="mt-3 space-y-1 rounded-lg border border-border/60 bg-paper/40 p-3">
