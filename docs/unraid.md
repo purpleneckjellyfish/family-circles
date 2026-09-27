@@ -1,12 +1,24 @@
 # Deploy Family Circles on Unraid
 
-Self-host Family Circles with Docker on Unraid. Photos stay on a mapped share; the app needs **HTTPS** in production for web push and (later) federation.
+Self-host Family Circles with Docker on Unraid. Photos stay on a mapped share; the app needs **HTTPS** in production for web push and federation.
+
+## Get the code (GitHub)
+
+This project starts life in Cursor as a **new project** — it is **not** on GitHub until you create a repo (use **Create repo** in the agent UI). After that:
+
+```bash
+# On Unraid (SSH or a build container with git + docker)
+git clone https://github.com/<you>/<family-circles-repo>.git
+cd <family-circles-repo>
+```
+
+Until a GitHub (or other) remote exists, you cannot `git clone` onto the tower — create the repo first, then come back to these steps.
 
 ## What you need
 
 - Unraid 6.12+ (or any Docker host)
 - A share for media originals (e.g. `appdata/family-circles/data` or a dedicated photos share)
-- A reverse proxy with TLS (SWAG, Nginx Proxy Manager, Caddy, Traefik, …)
+- A reverse proxy with TLS (SWAG, Nginx Proxy Manager, Caddy, Traefik, …) — or Tailscale HTTPS for LAN-only
 - Optional: User Scripts / cron for digest flush
 
 ## Volumes
@@ -61,22 +73,36 @@ Change the default Postgres password in production and keep `AUTH_SECRET` out of
 
 ## Bring it up
 
-From the project directory:
+1. Create appdata folders (Unraid terminal):
 
 ```bash
-docker compose up --build -d
-docker compose exec app node -e "require('fs').accessSync('/data')"
+mkdir -p /mnt/user/appdata/family-circles/{data,pgdata}
 ```
 
-App listens on container port `3000`, mapped to host **`43127`** by default (`43127:3000`). Point your reverse proxy at the container (or `http://TOWER:43127`).
-
-On first boot, run migrations if your image does not auto-migrate:
+2. Copy env and fill secrets:
 
 ```bash
-docker compose exec app npx drizzle-kit migrate
+cp .env.example .env
+# Edit .env — at minimum:
+#   AUTH_SECRET=<long random>
+#   APP_URL=https://circles.yourdomain.com
+#   AUTH_URL=https://circles.yourdomain.com
+#   VAPID_* from: npx web-push generate-vapid-keys
+#   CRON_SECRET=<random>
 ```
 
-(Or build with a start wrapper that migrates — current image expects you to migrate via Compose exec / CI.)
+3. Build and start (Unraid bind mounts via override file):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.unraid.yml up --build -d
+docker compose -f docker-compose.yml -f docker-compose.unraid.yml logs -f app
+```
+
+The app container **auto-migrates** on start (entrypoint runs `scripts/migrate.mjs`). You should see `Migrations applied` then Next listening on port 3000.
+
+App is on host **`43127`** (`43127:3000`). Point Nginx Proxy Manager / SWAG at `http://TOWER_IP:43127` (or the `family-circles` container on the proxy’s Docker network at port `3000`).
+
+LAN smoke test (before DNS/TLS): open `http://TOWER_IP:43127` → sign up.
 
 ## HTTPS reverse proxy
 
@@ -136,12 +162,10 @@ Delivery runs when the user’s local hour matches their digest hour and they ar
 
 ```bash
 git pull
-docker compose build --pull
-docker compose up -d
-docker compose exec app npx drizzle-kit migrate
+docker compose -f docker-compose.yml -f docker-compose.unraid.yml up --build -d
 ```
 
-Back up `/data` and Postgres before major upgrades.
+Migrations run automatically on container start. Back up `/data` and Postgres before major upgrades.
 
 ## LAN-only / Tailscale
 

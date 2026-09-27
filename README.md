@@ -37,7 +37,17 @@ Use the printed `https://….trycloudflare.com` URL in your browser. Demo login:
 
 ## Deploy on Unraid
 
-See **[docs/unraid.md](docs/unraid.md)** for volumes (`/data` + Postgres), HTTPS reverse proxy, VAPID, and digest cron.
+**Not on GitHub yet?** This is still a Cursor new project — click **Create repo** in the agent UI, then clone that remote onto your Unraid box.
+
+See **[docs/unraid.md](docs/unraid.md)** for the full path (`.env`, bind mounts, HTTPS). Short version after clone:
+
+```bash
+cp .env.example .env   # set AUTH_SECRET, APP_URL/AUTH_URL (https://…), VAPID_*, CRON_SECRET
+mkdir -p /mnt/user/appdata/family-circles/{data,pgdata}
+docker compose -f docker-compose.yml -f docker-compose.unraid.yml up --build -d
+```
+
+Migrations run automatically on container start. App: host port **43127** → reverse-proxy with TLS.
 
 ## PWA install & web push
 
