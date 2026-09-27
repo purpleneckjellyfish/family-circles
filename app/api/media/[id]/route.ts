@@ -9,9 +9,21 @@ import { auth } from "@/auth";
 import { follows, getDb, media, posts } from "@/db";
 import { absoluteMediaPath } from "@/lib/media-storage";
 import { getMembership } from "@/lib/permissions";
+import { posterStoragePath } from "@/lib/video";
+
+function parseRange(rangeHeader: string, size: number) {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim());
+  if (!match) return null;
+  const start = match[1] ? Number(match[1]) : 0;
+  const end = match[2] ? Number(match[2]) : size - 1;
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) {
+    return null;
+  }
+  return { start, end: Math.min(end, size - 1) };
+}
 
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
@@ -20,12 +32,14 @@ export async function GET(
   }
 
   const { id } = await ctx.params;
+  const variant = new URL(req.url).searchParams.get("variant");
   const db = getDb();
   const [row] = await db
     .select({
       id: media.id,
       storagePath: media.storagePath,
       mimeType: media.mimeType,
+      kind: media.kind,
       postId: media.postId,
       familyId: posts.familyId,
       hiddenAt: posts.hiddenAt,
@@ -64,16 +78,50 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const wantPoster = variant === "poster" && row.kind === "video";
+  const relPath = wantPoster
+    ? posterStoragePath(row.storagePath)
+    : row.storagePath;
+  const contentType = wantPoster
+    ? "image/jpeg"
+    : row.mimeType || "application/octet-stream";
+
   try {
-    const abs = absoluteMediaPath(row.storagePath);
+    const abs = absoluteMediaPath(relPath);
     const info = await stat(abs);
+    const rangeHeader = req.headers.get("range");
+
+    if (rangeHeader && !wantPoster) {
+      const range = parseRange(rangeHeader, info.size);
+      if (!range) {
+        return new NextResponse(null, {
+          status: 416,
+          headers: { "Content-Range": `bytes */${info.size}` },
+        });
+      }
+      const { start, end } = range;
+      const chunkSize = end - start + 1;
+      const stream = createReadStream(abs, { start, end });
+      const webStream = Readable.toWeb(stream) as unknown as ReadableStream;
+      return new NextResponse(webStream, {
+        status: 206,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Length": String(chunkSize),
+          "Content-Range": `bytes ${start}-${end}/${info.size}`,
+          "Accept-Ranges": "bytes",
+          "Cache-Control": "private, max-age=3600",
+        },
+      });
+    }
+
     const stream = createReadStream(abs);
     const webStream = Readable.toWeb(stream) as unknown as ReadableStream;
-
     return new NextResponse(webStream, {
       headers: {
-        "Content-Type": row.mimeType || "application/octet-stream",
+        "Content-Type": contentType,
         "Content-Length": String(info.size),
+        "Accept-Ranges": "bytes",
         "Cache-Control": "private, max-age=3600",
       },
     });

@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
   // Multi-photo memories need room beyond the default server-action body limit.
   experimental: {
     serverActions: {
-      bodySizeLimit: "32mb",
+      // Photos + short videos (up to ~200 MB each) need a higher ceiling.
+      bodySizeLimit: "256mb",
     },
   },
 };

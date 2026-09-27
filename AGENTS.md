@@ -26,8 +26,9 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 | Memories (posts) | `app/families/[slug]/posts/*`, `lib/actions/posts.ts`, `components/compose-post-form.tsx`, `components/post-card.tsx` |
 | Browse (person / year / album) | `app/families/[slug]/browse/*`, `lib/browse.ts` |
 | ZIP export | `app/families/[slug]/export`, `app/api/families/[slug]/export`, `lib/export-zip.ts` |
+| Video | `lib/video.ts`, `lib/media-storage.ts` (`storeVideoFile`), compose form `videos`, playback via `MemoryVideo` + Range on `/api/media` |
 | Empty / loading / error UI | `components/ui-states.tsx`, `app/**/loading.tsx`, `app/error.tsx`, `app/not-found.tsx` |
-| Unraid deploy | `docs/unraid.md`, `docker-compose.yml`, `Dockerfile` |
+| Unraid deploy | `docs/unraid.md`, `docker-compose.yml`, `Dockerfile` (includes **ffmpeg**) |
 | Albums / people | `app/families/[slug]/albums/*`, `.../people`, `lib/actions/albums.ts`, `lib/actions/people.ts` |
 | Comments | `lib/actions/comments.ts`, `components/comment-form.tsx` |
 | PWA / push | `app/manifest.ts`, `public/sw.js`, `lib/push.ts`, `app/settings/notifications`, `app/api/push/*`, `app/api/cron/digest` |
@@ -51,8 +52,9 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 - **PWA / push**: installable via manifest + `public/sw.js`. New posts call `notifyNewFamilyPost`. Quiet hours / digest queue into `notification_digest_items`; flush with `/api/cron/digest` + `CRON_SECRET`. Needs VAPID env + HTTPS (or localhost).
 - **Browse / export**: `/families/[slug]/browse` lists people, years (memory date else posted), albums. ZIP at `/families/[slug]/export` → `/api/families/[slug]/export` (originals + `memories.json` / `memories.csv`).
 - **Polish**: photo-first post cards, intentional motion (`animate-fc-*`, reduced-motion safe), empty / loading / error states. Deploy notes in `docs/unraid.md`.
+- **Video**: `media.kind = video`. Upload via compose → ffmpeg H.264/AAC MP4 + poster; play with `MemoryVideo` and Range requests. Docker image installs ffmpeg.
 - **Drizzle schema first**, then `db:generate` / `db:migrate`.
-- **Federation/video hooks** stay in schema; do not implement Phase 7+ unless asked.
+- **Federation hooks** stay in schema; do not implement Phase 8 unless asked.
 - Comment **why**; brand **Family Circles**.
 
 ## Design bar
@@ -70,4 +72,4 @@ Warm paper + ink + forest accent; Fraunces + Source Sans 3. Photo-first album fe
 
 ## Phase map
 
-Phases 0–6 are in (foundation through Unraid polish). Do not start video / federation unless asked.
+Phases 0–7 are in (foundation through video). Do not start federation unless asked.

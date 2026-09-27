@@ -13,7 +13,7 @@ Self-host Family Circles with Docker on Unraid. Photos stay on a mapped share; t
 
 | Host path (example) | Container | Purpose |
 | --- | --- | --- |
-| `/mnt/user/appdata/family-circles/data` | `/data` | Original photos (`DATA_DIR`) |
+| `/mnt/user/appdata/family-circles/data` | `/data` | Original photos + videos (`DATA_DIR`) |
 | Docker volume `pgdata` (or bind mount) | Postgres data dir | Database |
 
 Keep `/data` on a share you back up. Do **not** put originals only inside an ephemeral container layer.
@@ -105,7 +105,7 @@ location / {
   proxy_set_header Host $host;
   proxy_set_header X-Forwarded-Proto $scheme;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  client_max_body_size 40m;  # multi-photo uploads
+  client_max_body_size 260m;  # photos + video uploads (app limit ~256 MB)
 }
 ```
 
@@ -147,12 +147,28 @@ Back up `/data` and Postgres before major upgrades.
 
 You can skip public DNS and use Tailscale HTTPS or a local CA. Push still requires a secure context (HTTPS or `localhost`). Plain `http://192.168.…` will not enable web push in modern browsers.
 
+## Video (ffmpeg)
+
+Phase 7 video upload **requires ffmpeg + ffprobe** in the app container. The project `Dockerfile` installs `ffmpeg` in the runner image.
+
+- Uploads are stored under `/data`, transcoded to H.264/AAC MP4 (`+faststart`), and a JPEG poster is extracted.
+- Limits: up to **3** videos per memory, **200 MB** each; server action body limit **256 MB**.
+- Local `npm run dev` also needs host ffmpeg (`apt install ffmpeg` / brew).
+
+If ffmpeg is missing, the compose form returns a clear error instead of saving a broken file.
+
+| Symptom | Check |
+| --- | --- |
+| “ffmpeg is not installed” | Rebuild the Docker image; confirm `ffmpeg -version` inside the container |
+| Video upload times out | Slow disks / large files — wait, or raise reverse-proxy timeouts |
+| Player won’t seek | Ensure `/api/media` is not stripping `Range` headers at the proxy |
+
 ## Troubleshooting
 
 | Symptom | Check |
 | --- | --- |
 | Cannot enable push | HTTPS? VAPID env set? Recreate container after env change |
-| Uploads fail | Proxy `client_max_body_size`; disk space on `/data` |
+| Uploads fail | Proxy `client_max_body_size` (≥ 260m for video); disk space on `/data` |
 | Login loops | `AUTH_URL` / `APP_URL` must match the browser origin |
 | Empty media | Volume mounted at `/data`; file permissions for the `node` user |
 | Digest never sends | Cron hitting `/api/cron/digest` with correct `CRON_SECRET` |

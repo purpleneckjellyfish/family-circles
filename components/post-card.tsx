@@ -13,6 +13,7 @@ import type { FeedPost } from "@/lib/feed";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui-states";
 import { MemoryPhoto } from "@/components/memory-photo";
+import { MemoryVideo } from "@/components/memory-video";
 
 const initial: ActionState = {};
 
@@ -56,7 +57,7 @@ export function PostCard({
 
   const memoryLabel = formatDate(post.memoryDate);
   const postedLabel = formatDate(post.postedAt);
-  const hasPhotos = post.media.length > 0;
+  const hasMedia = post.media.length > 0;
   const actionError =
     hideState.error || unhideState.error || removeState.error;
 
@@ -65,8 +66,8 @@ export function PostCard({
       className="animate-fc-rise overflow-hidden rounded-xl border border-border/80 bg-card/60 shadow-[0_18px_40px_-32px_rgba(31,26,20,0.45)] transition-[border-color,box-shadow] duration-300 hover:border-forest/35"
       style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
     >
-      {/* Photos lead when present — editorial album, not caption-first chrome. */}
-      {hasPhotos ? (
+      {/* Media leads when present — editorial album, not caption-first chrome. */}
+      {hasMedia ? (
         <div
           className={
             post.media.length === 1
@@ -76,23 +77,40 @@ export function PostCard({
                 : "grid grid-cols-2 gap-px bg-border/60 sm:grid-cols-3"
           }
         >
-          {post.media.map((m, i) => (
-            <MemoryPhoto
-              key={m.id}
-              src={`/api/media/${m.id}`}
-              href={`/api/media/${m.id}`}
-              className={
-                post.media.length === 1
-                  ? "min-h-[14rem] sm:min-h-[18rem]"
-                  : i === 0 && post.media.length > 2
-                    ? "col-span-2 min-h-[12rem] sm:col-span-1 sm:min-h-[14rem]"
-                    : "min-h-[10rem] sm:min-h-[12rem]"
-              }
-              imgClassName={
-                post.media.length === 1 ? "max-h-[28rem]" : "max-h-none h-full"
-              }
-            />
-          ))}
+          {post.media.map((m, i) => {
+            const cellClass =
+              post.media.length === 1
+                ? "min-h-[14rem] sm:min-h-[18rem]"
+                : i === 0 && post.media.length > 2
+                  ? "col-span-2 min-h-[12rem] sm:col-span-1 sm:min-h-[14rem]"
+                  : "min-h-[10rem] sm:min-h-[12rem]";
+
+            if (m.kind === "video") {
+              return (
+                <MemoryVideo
+                  key={m.id}
+                  src={`/api/media/${m.id}`}
+                  poster={`/api/media/${m.id}?variant=poster`}
+                  durationMs={m.durationMs}
+                  className={cellClass}
+                />
+              );
+            }
+
+            return (
+              <MemoryPhoto
+                key={m.id}
+                src={`/api/media/${m.id}`}
+                href={`/api/media/${m.id}`}
+                className={cellClass}
+                imgClassName={
+                  post.media.length === 1
+                    ? "max-h-[28rem]"
+                    : "max-h-none h-full"
+                }
+              />
+            );
+          })}
         </div>
       ) : null}
 

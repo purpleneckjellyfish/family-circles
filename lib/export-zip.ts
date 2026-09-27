@@ -16,8 +16,8 @@ export type FamilyExportMeta = {
 };
 
 /**
- * Build a ZIP stream: originals under photos/, plus memories.json and memories.csv
- * with captions and dates.
+ * Build a ZIP stream: media under photos/ (images + playable videos), plus
+ * memories.json and memories.csv with captions and dates.
  */
 export function createFamilyExportZip(opts: {
   meta: FamilyExportMeta;
@@ -104,7 +104,7 @@ export function createFamilyExportZip(opts: {
       `Circle: ${opts.meta.familyName} (${opts.meta.familySlug})`,
       `Exported: ${opts.meta.exportedAt}`,
       "",
-      "photos/     original uploaded files",
+      "photos/        original images and playable MP4 videos",
       "memories.json  captions, dates, tags, album names",
       "memories.csv   flat table of the same metadata",
       "",

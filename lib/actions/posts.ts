@@ -3,8 +3,6 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { rm } from "node:fs/promises";
-import path from "node:path";
 import sharp from "sharp";
 import { z } from "zod";
 
@@ -20,7 +18,7 @@ import {
 } from "@/db";
 import type { ActionState } from "@/lib/actions/auth";
 import { memoryDateFromImageBytes } from "@/lib/exif";
-import { absoluteMediaPath, storeImageFile } from "@/lib/media-storage";
+import { removeMediaFiles, storeImageFile, storeVideoFile } from "@/lib/media-storage";
 import {
   canContribute,
   canModerate,
@@ -59,15 +57,21 @@ export async function createPostAction(
     return { error: "You cannot post in this circle." };
   }
 
-  const files = formData
+  const photoFiles = formData
     .getAll("photos")
     .filter((f): f is File => f instanceof File && f.size > 0);
+  const videoFiles = formData
+    .getAll("videos")
+    .filter((f): f is File => f instanceof File && f.size > 0);
 
-  if (!body && files.length === 0) {
-    return { error: "Add a caption or at least one photo." };
+  if (!body && photoFiles.length === 0 && videoFiles.length === 0) {
+    return { error: "Add a caption, photo, or video." };
   }
-  if (files.length > 12) {
+  if (photoFiles.length > 12) {
     return { error: "Up to 12 photos per memory for now." };
+  }
+  if (videoFiles.length > 3) {
+    return { error: "Up to 3 videos per memory for now." };
   }
 
   const db = getDb();
@@ -110,22 +114,25 @@ export async function createPostAction(
     .returning();
 
   const stored: Array<{
+    kind: "image" | "video";
     storagePath: string;
     mimeType: string;
     width: number | null;
     height: number | null;
+    durationMs: number | null;
     sortOrder: number;
     exifDate: string | null;
   }> = [];
 
   try {
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]!;
+    let order = 0;
+    for (let i = 0; i < photoFiles.length; i++) {
+      const file = photoFiles[i]!;
       const { storagePath, mimeType, bytes } = await storeImageFile({
         familyId,
         postId: post.id,
         file,
-        index: i,
+        index: order,
       });
       let width: number | null = null;
       let height: number | null = null;
@@ -138,18 +145,43 @@ export async function createPostAction(
       }
       const exifDate = await memoryDateFromImageBytes(bytes);
       stored.push({
+        kind: "image",
         storagePath,
         mimeType,
         width,
         height,
-        sortOrder: i,
+        durationMs: null,
+        sortOrder: order,
         exifDate,
       });
+      order += 1;
+    }
+
+    for (let i = 0; i < videoFiles.length; i++) {
+      const file = videoFiles[i]!;
+      const video = await storeVideoFile({
+        familyId,
+        postId: post.id,
+        file,
+        index: order,
+      });
+      stored.push({
+        kind: "video",
+        storagePath: video.storagePath,
+        mimeType: video.mimeType,
+        width: video.width,
+        height: video.height,
+        durationMs: video.durationMs,
+        sortOrder: order,
+        exifDate: null,
+      });
+      order += 1;
     }
   } catch (err) {
     await db.delete(posts).where(eq(posts.id, post.id));
     return {
-      error: err instanceof Error ? err.message : "Could not store photos.",
+      error:
+        err instanceof Error ? err.message : "Could not store photos or video.",
     };
   }
 
@@ -172,11 +204,12 @@ export async function createPostAction(
     await db.insert(media).values(
       stored.map((s) => ({
         postId: post.id,
-        kind: "image" as const,
+        kind: s.kind,
         storagePath: s.storagePath,
         mimeType: s.mimeType,
         width: s.width,
         height: s.height,
+        durationMs: s.durationMs,
         sortOrder: s.sortOrder,
       })),
     );
@@ -194,14 +227,20 @@ export async function createPostAction(
 
   const slug = familySlug || family.slug;
 
+  const photoCount = stored.filter((s) => s.kind === "image").length;
+  const videoCount = stored.filter((s) => s.kind === "video").length;
   // Fire-and-forget push / digest queue (errors must not block posting).
   const preview =
     body ||
-    (stored.length === 1
-      ? "shared a photo"
-      : stored.length > 1
-        ? `shared ${stored.length} photos`
-        : "shared a memory");
+    (videoCount && !photoCount
+      ? videoCount === 1
+        ? "shared a video"
+        : `shared ${videoCount} videos`
+      : photoCount === 1
+        ? "shared a photo"
+        : photoCount > 1
+          ? `shared ${photoCount} photos`
+          : "shared a memory");
   void notifyNewFamilyPost({
     familyId,
     familyName: family.name ?? slug,
@@ -319,15 +358,7 @@ export async function removeFollowerPostAction(
   await db.delete(posts).where(eq(posts.id, postId));
 
   for (const m of mediaRows) {
-    if (!m.storagePath) continue;
-    try {
-      const abs = absoluteMediaPath(m.storagePath);
-      await rm(abs, { force: true });
-      // Best-effort cleanup of empty dirs is skipped to keep Phase 2 simple.
-      void path.dirname(abs);
-    } catch {
-      /* file may already be gone */
-    }
+    await removeMediaFiles(m.storagePath);
   }
 
   const [family] = await db

@@ -34,6 +34,7 @@ export type FeedPost = {
     mimeType: string | null;
     width: number | null;
     height: number | null;
+    durationMs: number | null;
     sortOrder: number;
   }>;
   people: Array<{ id: string; displayName: string }>;
@@ -165,6 +166,7 @@ async function hydrateFeedPosts(
         mimeType: m.mimeType,
         width: m.width,
         height: m.height,
+        durationMs: m.durationMs,
         sortOrder: m.sortOrder,
       })),
     people: peopleRows

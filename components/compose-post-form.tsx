@@ -6,6 +6,7 @@ import { createPostAction } from "@/lib/actions/posts";
 import type { ActionState } from "@/lib/actions/auth";
 import { earliestExifDateFromFiles } from "@/lib/exif";
 import { Button } from "@/components/ui/button";
+import { ErrorBanner } from "@/components/ui-states";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +27,8 @@ export function ComposePostForm({
   const [state, action, pending] = useActionState(createPostAction, initial);
   const [memoryDate, setMemoryDate] = useState("");
   const [exifHint, setExifHint] = useState<string | null>(null);
-  const [previewCount, setPreviewCount] = useState(0);
+  const [photoCount, setPhotoCount] = useState(0);
+  const [videoCount, setVideoCount] = useState(0);
 
   return (
     <form action={action} className="flex w-full max-w-xl flex-col gap-4">
@@ -54,11 +56,13 @@ export function ComposePostForm({
           multiple
           onChange={async (e) => {
             const list = e.target.files ? Array.from(e.target.files) : [];
-            setPreviewCount(list.length);
+            setPhotoCount(list.length);
             const earliest = await earliestExifDateFromFiles(list);
             if (earliest) {
               setMemoryDate(earliest);
-              setExifHint(`Prefill from photo EXIF: ${earliest} (you can edit).`);
+              setExifHint(
+                `Prefill from photo EXIF: ${earliest} (you can edit).`,
+              );
             } else {
               setExifHint(
                 list.length
@@ -68,8 +72,29 @@ export function ComposePostForm({
             }
           }}
         />
-        {previewCount > 0 ? (
-          <p className="text-sm text-ink-soft">{previewCount} photo(s) selected</p>
+        {photoCount > 0 ? (
+          <p className="text-sm text-ink-soft">{photoCount} photo(s) selected</p>
+        ) : null}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="videos">Videos</Label>
+        <Input
+          id="videos"
+          name="videos"
+          type="file"
+          accept="video/mp4,video/quicktime,video/webm,video/*"
+          multiple
+          onChange={(e) => {
+            setVideoCount(e.target.files?.length ?? 0);
+          }}
+        />
+        <p className="text-sm text-ink-soft">
+          Up to 3 clips, 200&nbsp;MB each. The server transcodes to H.264 MP4 for
+          playback (needs ffmpeg).
+        </p>
+        {videoCount > 0 ? (
+          <p className="text-sm text-ink-soft">{videoCount} video(s) selected</p>
         ) : null}
       </div>
 
@@ -84,7 +109,8 @@ export function ComposePostForm({
         />
         <p className="text-sm text-ink-soft">
           When the memory happened (separate from when you post).{" "}
-          {exifHint ?? "EXIF dates from photos prefill this field when available."}
+          {exifHint ??
+            "EXIF dates from photos prefill this field when available."}
         </p>
       </div>
 
@@ -93,8 +119,16 @@ export function ComposePostForm({
           <legend className="text-sm font-medium">Tag people</legend>
           <div className="flex flex-wrap gap-3">
             {people.map((p) => (
-              <label key={p.id} className="flex items-center gap-2 text-sm text-ink">
-                <input type="checkbox" name="personIds" value={p.id} className="size-4" />
+              <label
+                key={p.id}
+                className="flex items-center gap-2 text-sm text-ink"
+              >
+                <input
+                  type="checkbox"
+                  name="personIds"
+                  value={p.id}
+                  className="size-4"
+                />
                 {p.displayName}
               </label>
             ))}
@@ -102,7 +136,8 @@ export function ComposePostForm({
         </fieldset>
       ) : (
         <p className="text-sm text-ink-soft">
-          No people tags yet. Owners/adults can add kids and relatives under People.
+          No people tags yet. Owners/adults can add kids and relatives under
+          People.
         </p>
       )}
 
@@ -125,14 +160,14 @@ export function ComposePostForm({
         </div>
       ) : null}
 
-      {state.error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {state.error}
-        </p>
-      ) : null}
+      {state.error ? <ErrorBanner>{state.error}</ErrorBanner> : null}
 
       <Button type="submit" size="lg" disabled={pending}>
-        {pending ? "Saving…" : "Share memory"}
+        {pending
+          ? videoCount > 0
+            ? "Transcoding & saving…"
+            : "Saving…"
+          : "Share memory"}
       </Button>
     </form>
   );
