@@ -16,6 +16,7 @@ import type { ActionState } from "@/lib/actions/auth";
 import type { FeedPost } from "@/lib/feed";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui-states";
+import { MemoryGallery } from "@/components/memory-gallery";
 import { MemoryPhoto } from "@/components/memory-photo";
 import { MemoryVideo } from "@/components/memory-video";
 import { Textarea } from "@/components/ui/textarea";
@@ -92,6 +93,7 @@ export function PostCard({
     setReactionAction,
     initial,
   );
+  const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
 
   const memoryLabel = formatDate(post.memoryDate);
   const postedLabel = formatDate(post.postedAt);
@@ -203,7 +205,7 @@ export function PostCard({
               <MemoryPhoto
                 key={m.id}
                 src={`/api/media/${m.id}`}
-                href={`/api/media/${m.id}`}
+                onOpen={() => setGalleryIndex(i)}
                 className={cellClass}
                 imgClassName={
                   post.media.length === 1
@@ -214,6 +216,23 @@ export function PostCard({
             );
           })}
         </div>
+      ) : null}
+
+      {galleryIndex != null ? (
+        <MemoryGallery
+          items={post.media.map((m) => ({
+            id: m.id,
+            kind: m.kind,
+            src: `/api/media/${m.id}`,
+            poster:
+              m.kind === "video" && m.hasLocalFile
+                ? `/api/media/${m.id}?variant=poster`
+                : undefined,
+          }))}
+          index={galleryIndex}
+          onIndex={setGalleryIndex}
+          onClose={() => setGalleryIndex(null)}
+        />
       ) : null}
 
       <div className="p-4 sm:p-5">

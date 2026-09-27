@@ -7,12 +7,12 @@ import { cn } from "@/lib/utils";
 /** Photo tile with soft reveal — keeps feed feeling album-first. */
 export function MemoryPhoto({
   src,
-  href,
+  onOpen,
   className,
   imgClassName,
 }: {
   src: string;
-  href?: string;
+  onOpen?: () => void;
   className?: string;
   imgClassName?: string;
 }) {
@@ -50,20 +50,16 @@ export function MemoryPhoto({
   );
 
   const shellClass = cn(
-    "group relative block overflow-hidden bg-paper-deep",
+    "group relative block h-full w-full overflow-hidden border-0 bg-paper-deep p-0 text-left",
+    onOpen ? "cursor-zoom-in" : "",
     className,
   );
 
-  if (href) {
+  if (onOpen) {
     return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className={shellClass}
-      >
+      <button type="button" onClick={onOpen} aria-label="Open photo" className={shellClass}>
         {inner}
-      </a>
+      </button>
     );
   }
 
