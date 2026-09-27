@@ -18,47 +18,45 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 | --- | --- |
 | Routes / pages | `app/` |
 | Landing | `app/page.tsx` |
-| Auth pages | `app/login`, `app/signup`, `app/api/auth/[...nextauth]` |
-| Auth.js config | `auth.ts`, `types/next-auth.d.ts` |
-| Authed home / browse | `app/home`, `app/browse` |
-| Families & invites | `app/families/*`, `app/invite/[token]` |
-| Server actions | `lib/actions/auth.ts`, `lib/actions/families.ts` |
+| Auth | `auth.ts`, `app/login`, `app/signup`, `app/api/auth/[...nextauth]` |
+| Home feed | `app/home`, `lib/feed.ts` |
+| Families / invites | `app/families/*`, `app/invite/[token]` |
+| Memories (posts) | `app/families/[slug]/posts/*`, `lib/actions/posts.ts`, `components/compose-post-form.tsx`, `components/post-card.tsx` |
+| Albums / people | `app/families/[slug]/albums/*`, `.../people`, `lib/actions/albums.ts`, `lib/actions/people.ts` |
+| Comments | `lib/actions/comments.ts`, `components/comment-form.tsx` |
+| Media files | `DATA_DIR` via `lib/media-storage.ts`; served at `app/api/media/[id]` |
+| EXIF helpers | `lib/exif.ts` (client + server) |
+| Permissions | `lib/permissions.ts` |
+| Server actions | `lib/actions/*` |
 | Design tokens / fonts | `app/globals.css`, `app/layout.tsx` |
 | shadcn primitives | `components/ui/` |
-| Shared UI | `components/` (`site-header`, forms) |
-| Drizzle schema (source of truth) | `db/schema.ts` |
-| DB client | `db/index.ts` (`getDb`, `closeDb` for scripts) |
-| Env helpers | `lib/env.ts` |
-| Docker | `Dockerfile`, `docker-compose.yml` |
-| Env template | `.env.example` |
+| Drizzle schema | `db/schema.ts` |
+| DB client | `db/index.ts` |
+| Env | `lib/env.ts`, `.env.example` |
 
 ## Conventions
 
-- **TypeScript + App Router** only. Prefer server components; add `"use client"` only for interactivity.
-- **Auth.js (next-auth v5)** with Credentials + JWT. Email is stored lowercased; passwords hashed with bcrypt (`lib/password.ts`).
-- **Roles**: `owner` (creator), `adult` (family member invite), `follower` (collaborator invite or same-instance follow). Owners/adults mint invites.
-- **Drizzle schema first** — add columns/tables in `db/schema.ts`, then `npm run db:generate` / `db:migrate`.
-- **Media** lives under `DATA_DIR` (Compose: `/data`). Do not store binaries in Postgres.
-- **Federation hooks** (`remoteUri`, `instanceHost`, actor inbox/outbox) are reserved from Phase 0; do not remove them. Full ActivityPub is Phase 8.
-- **Video**: `media.kind` is `image | video` already; upload/transcode UI is Phase 7.
-- Comment **why** on non-obvious choices; skip noise comments.
-- Product copy and UI must say **Family Circles**.
+- **TypeScript + App Router**. Prefer server components; `"use client"` only for interactivity.
+- **Auth.js** Credentials + JWT; emails lowercased; bcrypt in `lib/password.ts`.
+- **Roles**: `owner` / `adult` moderate + invite; `follower` can contribute/comment. Adults/owners may **hide** or **remove** follower posts only.
+- **Memories**: `posts.memoryDate` (when it happened) vs `posts.postedAt` (when shared). EXIF prefills memory date (editable). Photos under `DATA_DIR/families/...` — never in Postgres.
+- **Drizzle schema first**, then `db:generate` / `db:migrate`.
+- **Federation/video hooks** stay in schema; do not implement Phase 3+ unless asked.
+- Comment **why**; brand **Family Circles**.
 
 ## Design bar
 
-Editorial photo-album: warm paper + ink + deep forest accent, Fraunces (display) + Source Sans 3 (body). No purple gradients, no Inter-default SaaS look, no feature-dump heroes.
+Warm paper + ink + forest accent; Fraunces + Source Sans 3. No purple SaaS chrome.
 
 ## Scripts
 
 | Script | Purpose |
 | --- | --- |
-| `npm run dev` | Next dev server (`:43127`) |
+| `npm run dev` | Dev server `:43127` |
 | `npm run build` / `start` | Production |
 | `npm run lint` | ESLint |
-| `npm run db:generate` | Drizzle Kit generate migrations |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:studio` | Drizzle Studio |
+| `npm run db:generate` / `db:migrate` / `db:studio` | Drizzle |
 
 ## Phase map
 
-Phase 0 foundation + Phase 1 people/circles are in. Do not implement Phase 2+ (posts, throwbacks, PWA, federation) unless asked.
+Phases 0–2 are in (foundation, people/circles, memories). Do not start throwbacks/PWA/federation unless asked.

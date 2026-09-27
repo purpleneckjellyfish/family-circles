@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // Dev UI is often opened via 127.0.0.1 while Next prints localhost.
   allowedDevOrigins: ["127.0.0.1"],
+  // Multi-photo memories need room beyond the default server-action body limit.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "32mb",
+    },
+  },
 };
 
 export default nextConfig;

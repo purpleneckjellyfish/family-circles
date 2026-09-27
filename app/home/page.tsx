@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
 
+import { PostCard } from "@/components/post-card";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { families, familyMemberships, follows, getDb } from "@/db";
+import { loadFeedPosts } from "@/lib/feed";
+import { canModerate } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 
 export const metadata = { title: "Home" };
@@ -44,6 +47,13 @@ export default async function AppHomePage() {
   );
   const collaboratorMemberships = memberships.filter((m) => m.role === "follower");
 
+  const feed = await loadFeedPosts({ userId: user.id!, limit: 40 });
+  const moderateFamilies = new Set(
+    memberships.filter((m) => canModerate(m.role)).map((m) => m.id),
+  );
+
+  const firstFamily = familyMembers[0] ?? collaboratorMemberships[0];
+
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <SiteHeader />
@@ -54,19 +64,51 @@ export default async function AppHomePage() {
               Hello, {user.name?.split(" ")[0] ?? "there"}
             </h1>
             <p className="mt-2 text-ink-soft">
-              Your family circles and the ones you follow live here.
+              Memories from your circles and the ones you follow.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" render={<Link href="/browse" />}>
               Browse
             </Button>
-            <Button render={<Link href="/families/new" />}>New circle</Button>
+            {firstFamily ? (
+              <Button
+                render={<Link href={`/families/${firstFamily.slug}/posts/new`} />}
+              >
+                New memory
+              </Button>
+            ) : (
+              <Button render={<Link href="/families/new" />}>New circle</Button>
+            )}
           </div>
         </div>
 
-        <section className="mt-12">
-          <h2 className="font-display text-2xl text-ink">Your families</h2>
+        <section className="mt-10">
+          <h2 className="font-display text-2xl text-ink">Feed</h2>
+          {feed.length === 0 ? (
+            <p className="mt-3 text-ink-soft">
+              Nothing here yet. Create a circle or follow one, then share a memory.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {feed.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  viewerCanModerate={moderateFamilies.has(post.familyId)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-14">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="font-display text-2xl text-ink">Your families</h2>
+            <Button variant="outline" size="sm" render={<Link href="/families/new" />}>
+              New circle
+            </Button>
+          </div>
           {familyMembers.length === 0 ? (
             <p className="mt-3 text-ink-soft">
               No circles yet.{" "}

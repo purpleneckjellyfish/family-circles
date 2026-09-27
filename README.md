@@ -23,13 +23,15 @@ npm run dev
 
 Open [http://127.0.0.1:43127](http://127.0.0.1:43127).
 
-### Try Phase 1 (auth & circles)
+## Try Phase 1–2
 
-1. **Create account** at `/signup` (email + password, 8+ chars).
-2. **Create a circle** from Home → New circle (you become **owner**).
-3. On the circle page, **Create invite link** as family member (adult) or collaborator (follower).
-4. Open the invite URL in another browser/profile, sign up or sign in, **Accept invite**.
-5. Or **Browse** circles and **Follow as collaborator** on a circle you do not own.
+1. **Create account** at `/signup`.
+2. **Create a circle** (Home → New circle).
+3. **People** → add kids/relatives (no account needed) for tags.
+4. **Albums** (optional) → create an album.
+5. **New memory** → caption and/or photos; memory date prefills from EXIF when present (editable); tag people / pick album.
+6. **Home feed** shows posts from memberships + follows.
+7. As owner/adult, **Hide** or **Remove** collaborator (follower) posts from the post card.
 
 Required env vars: `.env.example` (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL` / `APP_URL`, `DATA_DIR`, VAPID placeholders).
 
@@ -58,4 +60,4 @@ docker compose up --build
 
 ## What’s next
 
-Phase 2+: memories/posts, throwbacks, PWA, export, video UI, ActivityPub federation. Schema already reserves `media.kind` and remote actor fields.
+Phase 3+: throwbacks, PWA/push, browse/export polish, video UI, ActivityPub federation.
