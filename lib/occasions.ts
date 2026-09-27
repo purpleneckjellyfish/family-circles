@@ -5,8 +5,12 @@ export const OCCASION_LABELS: Record<string, string> = {
   other: "Other",
 };
 
+export function occasionName(occasion: string) {
+  return OCCASION_LABELS[occasion] ?? occasion;
+}
+
 export function occasionBrowseTitle(occasion: string, year: number) {
-  return `${OCCASION_LABELS[occasion] ?? occasion} ${year}`;
+  return `${occasionName(occasion)} ${year}`;
 }
 
 export function occasionHref(slug: string, occasion: string, year: number) {

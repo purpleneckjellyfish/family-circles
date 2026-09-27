@@ -85,7 +85,7 @@ export default async function BrowseOccasionPage({
         </h1>
         <p className="mt-2 text-ink-soft">
           Memories tagged with this occasion
-          {year ? ` in ${year}` : ""}.
+          {year ? ` in ${year}` : ""}, in the order they happened.
         </p>
 
         <div className="mt-8 space-y-4">

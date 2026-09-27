@@ -10,7 +10,7 @@ import {
   listYearsWithPostCounts,
 } from "@/lib/browse";
 import { requireFamilyView } from "@/lib/family-access";
-import { occasionBrowseTitle, occasionHref } from "@/lib/occasions";
+import { occasionHref, occasionName } from "@/lib/occasions";
 
 export const metadata = { title: "Browse" };
 
@@ -53,25 +53,25 @@ export default async function FamilyBrowsePage({
               Tag Christmas, birthdays, and more when you share a memory.
             </p>
           ) : (
-            <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {occasionRows.map((o) => (
-                <li key={`${o.occasion}-${o.year}`}>
-                  <Link
-                    href={occasionHref(slug, o.occasion, o.year)}
-                    className="flex flex-col rounded-xl border border-border/80 bg-card/50 px-4 py-3 hover:border-forest/40"
-                  >
-                    <span className="font-display text-xl text-ink">
-                      {occasionBrowseTitle(o.occasion, o.year)}
-                    </span>
-                    <span className="text-sm text-ink-soft">
-                      {o.postCount === 1
-                        ? "1 memory"
-                        : `${o.postCount} memories`}
-                    </span>
-                  </Link>
-                </li>
+            <div className="mt-4 space-y-6">
+              {groupOccasions(slug, occasionRows).map((group) => (
+                <div key={group.year}>
+                  <h3 className="font-display text-xl text-ink">{group.year}</h3>
+                  <ul className="mt-1">
+                    {group.events.map((event) => (
+                      <li key={event.href}>
+                        <Link
+                          href={event.href}
+                          className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:text-forest hover:underline"
+                        >
+                          {event.title}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </section>
 
@@ -86,19 +86,14 @@ export default async function FamilyBrowsePage({
               actionLabel="Add people"
             />
           ) : (
-            <ul className="mt-4 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
+            <ul className="mt-2">
               {peopleRows.map((p) => (
                 <li key={p.id}>
                   <Link
                     href={`/families/${slug}/browse/people/${p.id}`}
-                    className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-paper-deep/40"
+                    className="inline-flex min-h-11 items-center text-ink underline-offset-4 hover:text-forest hover:underline"
                   >
-                    <span className="text-ink">{p.displayName}</span>
-                    <span className="text-sm text-ink-soft">
-                      {p.postCount === 1
-                        ? "1 memory"
-                        : `${p.postCount} memories`}
-                    </span>
+                    {p.displayName}
                   </Link>
                 </li>
               ))}
@@ -179,4 +174,26 @@ export default async function FamilyBrowsePage({
       </main>
     </div>
   );
+}
+
+function groupOccasions(
+  slug: string,
+  rows: Array<{ occasion: string; year: number | null }>,
+) {
+  const byYear = new Map<number, Array<{ href: string; title: string }>>();
+  for (const row of rows) {
+    if (row.year == null) continue;
+    const events = byYear.get(row.year) ?? [];
+    events.push({
+      href: occasionHref(slug, row.occasion, row.year),
+      title: occasionName(row.occasion),
+    });
+    byYear.set(row.year, events);
+  }
+  return [...byYear.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, events]) => ({
+      year,
+      events: events.sort((a, b) => a.title.localeCompare(b.title)),
+    }));
 }

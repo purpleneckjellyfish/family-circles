@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 
 import { logoutAction } from "@/lib/actions/auth";
@@ -16,10 +16,14 @@ export type MenuCircle = {
   badge: string;
 };
 
-export type MenuShortcut = {
+export type MenuLink = {
   href: string;
   title: string;
-  detail: string;
+};
+
+export type MenuYear = {
+  year: number;
+  events: MenuLink[];
 };
 
 const appLinks = [
@@ -40,23 +44,27 @@ export function AppMenu({
   signedIn,
   name,
   circles,
-  events,
+  years,
   people,
 }: {
   signedIn: boolean;
   name?: string | null;
   circles: MenuCircle[];
-  events: MenuShortcut[];
-  people: MenuShortcut[];
+  years: MenuYear[];
+  people: MenuLink[];
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setSearch(window.location.search);
+  }, [pathname]);
 
   useEffect(() => {
     setOpen(false);
@@ -135,21 +143,69 @@ export function AppMenu({
         </div>
 
         {signedIn ? (
-          <ShortcutList
-            title="Events"
-            empty="Tag a memory with Christmas, a birthday, or another occasion and it will show up here."
-            items={events}
-            isCurrent={(href) => samePlace(pathname, searchParams, href)}
-          />
+          <section className="mt-8">
+            <h2 className="px-3 text-xs font-medium tracking-wide text-ink-soft uppercase">
+              Events
+            </h2>
+            {years.length === 0 ? (
+              <p className="mt-2 px-3 text-sm text-ink-soft">
+                Tag a memory with Christmas, a birthday, or another occasion and
+                it will show up under that year.
+              </p>
+            ) : (
+              years.map((group) => (
+                <div key={group.year} className="mt-3">
+                  <p className="px-3 text-sm font-medium text-ink">{group.year}</p>
+                  <ul className="mt-1">
+                    {group.events.map((event) => {
+                      const current = samePlace(pathname, search, event.href);
+                      return (
+                        <li key={event.href}>
+                          <Link
+                            href={event.href}
+                            className={linkClass(current)}
+                            aria-current={current ? "page" : undefined}
+                          >
+                            {event.title}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))
+            )}
+          </section>
         ) : null}
 
         {signedIn ? (
-          <ShortcutList
-            title="People"
-            empty="Tag someone on a memory to open just their timeline."
-            items={people}
-            isCurrent={(href) => samePlace(pathname, searchParams, href)}
-          />
+          <section className="mt-8">
+            <h2 className="px-3 text-xs font-medium tracking-wide text-ink-soft uppercase">
+              People
+            </h2>
+            {people.length === 0 ? (
+              <p className="mt-2 px-3 text-sm text-ink-soft">
+                Add family members under People, then tag them on a memory.
+              </p>
+            ) : (
+              <ul className="mt-2">
+                {people.map((person) => {
+                  const current = samePlace(pathname, search, person.href);
+                  return (
+                    <li key={person.href}>
+                      <Link
+                        href={person.href}
+                        className={linkClass(current)}
+                        aria-current={current ? "page" : undefined}
+                      >
+                        {person.title}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
         ) : null}
 
         {circleSlug ? (
@@ -251,61 +307,14 @@ export function AppMenu({
   );
 }
 
-function samePlace(
-  pathname: string,
-  searchParams: { get: (key: string) => string | null },
-  href: string,
-) {
+function samePlace(pathname: string, search: string, href: string) {
   const [path, query = ""] = href.split("?");
   if (pathname !== path) return false;
   const want = new URLSearchParams(query);
+  const have = new URLSearchParams(search);
   for (const [key, value] of want) {
-    if (searchParams.get(key) !== value) return false;
+    if (have.get(key) !== value) return false;
   }
   return true;
 }
 
-function ShortcutList({
-  title,
-  empty,
-  items,
-  isCurrent,
-}: {
-  title: string;
-  empty: string;
-  items: MenuShortcut[];
-  isCurrent: (href: string) => boolean;
-}) {
-  return (
-    <section className="mt-8">
-      <h2 className="px-3 text-xs font-medium tracking-wide text-ink-soft uppercase">
-        {title}
-      </h2>
-      {items.length === 0 ? (
-        <p className="mt-2 px-3 text-sm text-ink-soft">{empty}</p>
-      ) : (
-        <ul className="mt-2 flex flex-col gap-1">
-          {items.map((item) => {
-            const current = isCurrent(item.href);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={linkClass(current)}
-                  aria-current={current ? "page" : undefined}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate">{item.title}</span>
-                    <span className="block truncate text-xs text-ink-soft">
-                      {item.detail}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </section>
-  );
-}

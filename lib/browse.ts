@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
 import {
   albumPosts,
@@ -13,7 +13,7 @@ import {
   posts,
 } from "@/db";
 import { loadPostsByIds, moderateFamilyIds, type FeedPost } from "@/lib/feed";
-import { occasionBrowseTitle, occasionHref } from "@/lib/occasions";
+import { occasionHref, occasionName } from "@/lib/occasions";
 
 function effectiveYearExpr() {
   // Prefer memory_date year; fall back to posted_at calendar date (UTC).
@@ -101,7 +101,7 @@ export async function loadPostsForPerson(opts: {
         eq(posts.familyId, opts.familyId),
       ),
     )
-    .orderBy(desc(happenedOn()), desc(posts.postedAt));
+    .orderBy(asc(happenedOn()), asc(posts.postedAt));
 
   return loadPostsByIds({
     userId: opts.userId,
@@ -183,7 +183,7 @@ export async function loadPostsForOccasion(opts: {
     .select({ id: posts.id })
     .from(posts)
     .where(and(...conditions))
-    .orderBy(desc(happenedOn()), desc(posts.postedAt));
+    .orderBy(asc(happenedOn()), asc(posts.postedAt));
 
   return loadPostsByIds({
     userId: opts.userId,
@@ -195,20 +195,20 @@ function happenedOn() {
   return sql`coalesce(${posts.memoryDate}, (${posts.postedAt} at time zone 'UTC')::date)`;
 }
 
-function memoryCount(count: number) {
-  return count === 1 ? "1 memory" : `${count} memories`;
-}
-
-export type LookbackShortcut = {
+export type LookbackLink = {
   href: string;
   title: string;
-  detail: string;
 };
 
-/** Occasions and tagged people across every circle the viewer can open. */
+export type LookbackYear = {
+  year: number;
+  events: LookbackLink[];
+};
+
+/** Occasions grouped by year, and every person, across circles the viewer can open. */
 export async function listLookbackIndex(userId: string): Promise<{
-  events: LookbackShortcut[];
-  people: LookbackShortcut[];
+  years: LookbackYear[];
+  people: LookbackLink[];
 }> {
   const db = getDb();
   const memberships = await db
@@ -249,42 +249,39 @@ export async function listLookbackIndex(userId: string): Promise<{
   );
 
   const several = circles.size > 1;
-  const events: Array<LookbackShortcut & { year: number }> = [];
-  const peopleShortcuts: LookbackShortcut[] = [];
+  const byYear = new Map<number, LookbackLink[]>();
+  const people: LookbackLink[] = [];
 
   for (const { circle, occasions, peopleRows } of buckets) {
     for (const occasion of occasions) {
       if (occasion.year == null) continue;
+      const name = occasionName(occasion.occasion);
+      const events = byYear.get(occasion.year) ?? [];
       events.push({
         href: occasionHref(circle.slug, occasion.occasion, occasion.year),
-        title: occasionBrowseTitle(occasion.occasion, occasion.year),
-        detail: several
-          ? `${circle.name} · ${memoryCount(occasion.postCount)}`
-          : memoryCount(occasion.postCount),
-        year: occasion.year,
+        title: several ? `${name} · ${circle.name}` : name,
       });
+      byYear.set(occasion.year, events);
     }
     for (const person of peopleRows) {
-      if (person.postCount < 1) continue;
-      peopleShortcuts.push({
+      people.push({
         href: `/families/${circle.slug}/browse/people/${person.id}`,
-        title: person.displayName,
-        detail: several
-          ? `${circle.name} · ${memoryCount(person.postCount)}`
-          : memoryCount(person.postCount),
+        title: several
+          ? `${person.displayName} · ${circle.name}`
+          : person.displayName,
       });
     }
   }
 
-  events.sort(
-    (a, b) => b.year - a.year || a.title.localeCompare(b.title),
-  );
-  peopleShortcuts.sort((a, b) => a.title.localeCompare(b.title));
+  const years = [...byYear.entries()]
+    .sort((a, b) => b[0] - a[0])
+    .map(([year, events]) => ({
+      year,
+      events: events.sort((a, b) => a.title.localeCompare(b.title)),
+    }));
+  people.sort((a, b) => a.title.localeCompare(b.title));
 
-  return {
-    events: events.map(({ href, title, detail }) => ({ href, title, detail })),
-    people: peopleShortcuts,
-  };
+  return { years, people };
 }
 
 export type ExportMemory = {

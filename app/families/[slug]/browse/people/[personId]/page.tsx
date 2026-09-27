@@ -62,8 +62,8 @@ export default async function BrowsePersonPage({
         </h1>
         <p className="mt-2 text-ink-soft">
           {person.birthday
-            ? `${person.displayName}'s timeline, newest first · birthday ${person.birthday}.`
-            : `${person.displayName}'s timeline, newest first.`}
+            ? `${person.displayName}'s timeline, in the order they happened · birthday ${person.birthday}.`
+            : `${person.displayName}'s timeline, in the order they happened.`}
         </p>
 
         <div className="mt-8 space-y-4">

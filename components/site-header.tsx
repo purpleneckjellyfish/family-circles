@@ -1,8 +1,7 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { and, eq } from "drizzle-orm";
 
-import { AppMenu, type MenuCircle, type MenuShortcut } from "@/components/app-menu";
+import { AppMenu, type MenuCircle } from "@/components/app-menu";
 import { Button } from "@/components/ui/button";
 import { families, familyMemberships, follows, getDb } from "@/db";
 import { listLookbackIndex } from "@/lib/browse";
@@ -53,7 +52,7 @@ export async function SiteHeader() {
   const circles = user?.id ? await loadMenuCircles(user.id) : [];
   const lookback = user?.id
     ? await listLookbackIndex(user.id)
-    : { events: [] as MenuShortcut[], people: [] as MenuShortcut[] };
+    : { years: [], people: [] };
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/90 backdrop-blur-md">
@@ -78,15 +77,13 @@ export async function SiteHeader() {
                 Settings
               </Button>
             </nav>
-            <Suspense fallback={<span className="inline-block size-11 md:hidden" />}>
-              <AppMenu
-                signedIn
-                name={user.name ?? user.email}
-                circles={circles}
-                events={lookback.events}
-                people={lookback.people}
-              />
-            </Suspense>
+            <AppMenu
+              signedIn
+              name={user.name ?? user.email}
+              circles={circles}
+              years={lookback.years}
+              people={lookback.people}
+            />
           </>
         ) : (
           <>
@@ -96,9 +93,7 @@ export async function SiteHeader() {
               </Button>
               <Button render={<Link href="/signup" />}>Create account</Button>
             </nav>
-            <Suspense fallback={<span className="inline-block size-11 md:hidden" />}>
-              <AppMenu signedIn={false} circles={[]} events={[]} people={[]} />
-            </Suspense>
+            <AppMenu signedIn={false} circles={[]} years={[]} people={[]} />
           </>
         )}
       </div>
