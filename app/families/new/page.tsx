@@ -15,8 +15,9 @@ export default async function NewFamilyPage() {
           Create a family circle
         </h1>
         <p className="mt-3 max-w-md text-ink-soft">
-          You become the owner. Invite adults as family members, or collaborators
-          who can follow and contribute.
+          You become the owner. Add adults and kids to the roster, then invite
+          adults with a link or email. Followers stay quiet until you grant photo
+          posting.
         </p>
         <div className="mt-8">
           <CreateFamilyForm />

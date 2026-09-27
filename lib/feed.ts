@@ -11,6 +11,7 @@ import {
   media,
   people,
   postPeople,
+  postReactions,
   posts,
   users,
 } from "@/db";
@@ -20,6 +21,8 @@ export type FeedPost = {
   id: string;
   body: string | null;
   memoryDate: string | null;
+  occasion: "none" | "christmas" | "birthday" | "easter" | "other";
+  occasionLabel: string | null;
   postedAt: Date;
   hiddenAt: Date | null;
   familyId: string;
@@ -42,12 +45,16 @@ export type FeedPost = {
   people: Array<{ id: string; displayName: string }>;
   albums: Array<{ id: string; title: string }>;
   commentCount: number;
+  reactions: Array<{ emoji: string; count: number }>;
+  viewerReaction: string | null;
 };
 
 type PostRow = {
   id: string;
   body: string | null;
   memoryDate: string | null;
+  occasion: "none" | "christmas" | "birthday" | "easter" | "other";
+  occasionLabel: string | null;
   postedAt: Date;
   hiddenAt: Date | null;
   familyId: string;
@@ -90,6 +97,7 @@ export async function moderateFamilyIds(userId: string) {
 async function hydrateFeedPosts(
   visible: PostRow[],
   familyIds: string[],
+  viewerUserId?: string,
 ): Promise<FeedPost[]> {
   if (visible.length === 0) return [];
   const db = getDb();
@@ -132,6 +140,42 @@ async function hydrateFeedPosts(
 
   const commentMap = new Map(commentRows.map((c) => [c.postId, c.count]));
 
+  const reactionRows = await db
+    .select({
+      postId: postReactions.postId,
+      emoji: postReactions.emoji,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(postReactions)
+    .where(inArray(postReactions.postId, postIds))
+    .groupBy(postReactions.postId, postReactions.emoji);
+
+  const reactionMap = new Map<string, Array<{ emoji: string; count: number }>>();
+  for (const r of reactionRows) {
+    const list = reactionMap.get(r.postId) ?? [];
+    list.push({ emoji: r.emoji, count: r.count });
+    reactionMap.set(r.postId, list);
+  }
+
+  const viewerReactionMap = new Map<string, string>();
+  if (viewerUserId) {
+    const mine = await db
+      .select({
+        postId: postReactions.postId,
+        emoji: postReactions.emoji,
+      })
+      .from(postReactions)
+      .where(
+        and(
+          inArray(postReactions.postId, postIds),
+          eq(postReactions.userId, viewerUserId),
+        ),
+      );
+    for (const row of mine) {
+      viewerReactionMap.set(row.postId, row.emoji);
+    }
+  }
+
   const authorRoles = await db
     .select({
       familyId: familyMemberships.familyId,
@@ -150,6 +194,8 @@ async function hydrateFeedPosts(
     id: r.id,
     body: r.body,
     memoryDate: r.memoryDate,
+    occasion: r.occasion,
+    occasionLabel: r.occasionLabel,
     postedAt: r.postedAt,
     hiddenAt: r.hiddenAt,
     familyId: r.familyId,
@@ -179,6 +225,8 @@ async function hydrateFeedPosts(
       .filter((a) => a.postId === r.id)
       .map((a) => ({ id: a.id, title: a.title })),
     commentCount: commentMap.get(r.id) ?? 0,
+    reactions: (reactionMap.get(r.id) ?? []).sort((a, b) => b.count - a.count),
+    viewerReaction: viewerReactionMap.get(r.id) ?? null,
   }));
 }
 
@@ -200,6 +248,8 @@ export async function loadFeedPosts(opts: {
       id: posts.id,
       body: posts.body,
       memoryDate: posts.memoryDate,
+      occasion: posts.occasion,
+      occasionLabel: posts.occasionLabel,
       postedAt: posts.postedAt,
       hiddenAt: posts.hiddenAt,
       familyId: posts.familyId,
@@ -218,7 +268,7 @@ export async function loadFeedPosts(opts: {
   const visible = rows.filter(
     (r) => !r.hiddenAt || modFamilies.has(r.familyId),
   );
-  return hydrateFeedPosts(visible, familyIds);
+  return hydrateFeedPosts(visible, familyIds, opts.userId);
 }
 
 export async function loadPostsByIds(opts: {
@@ -234,6 +284,8 @@ export async function loadPostsByIds(opts: {
       id: posts.id,
       body: posts.body,
       memoryDate: posts.memoryDate,
+      occasion: posts.occasion,
+      occasionLabel: posts.occasionLabel,
       postedAt: posts.postedAt,
       hiddenAt: posts.hiddenAt,
       familyId: posts.familyId,
@@ -251,9 +303,8 @@ export async function loadPostsByIds(opts: {
     (r) => !r.hiddenAt || modFamilies.has(r.familyId),
   );
   const familyIds = [...new Set(visible.map((r) => r.familyId))];
-  const hydrated = await hydrateFeedPosts(visible, familyIds);
+  const hydrated = await hydrateFeedPosts(visible, familyIds, opts.userId);
 
-  // Preserve caller order.
   const map = new Map(hydrated.map((p) => [p.id, p]));
   return opts.postIds
     .map((id) => map.get(id))

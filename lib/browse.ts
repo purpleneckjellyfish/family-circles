@@ -124,6 +124,69 @@ export async function loadPostsForYear(opts: {
   });
 }
 
+export async function listOccasionsWithPostCounts(
+  familyId: string,
+  userId: string,
+) {
+  const db = getDb();
+  const modFamilies = await moderateFamilyIds(userId);
+  const yearExpr = effectiveYearExpr();
+
+  const rows = await db
+    .select({
+      occasion: posts.occasion,
+      year: yearExpr,
+      postCount: sql<number>`count(*)::int`,
+      hiddenCount: sql<number>`count(*) filter (where ${posts.hiddenAt} is not null)::int`,
+    })
+    .from(posts)
+    .where(
+      and(eq(posts.familyId, familyId), sql`${posts.occasion} <> 'none'`),
+    )
+    .groupBy(posts.occasion, yearExpr)
+    .orderBy(desc(yearExpr), posts.occasion);
+
+  return rows
+    .map((r) => {
+      const visibleCount = modFamilies.has(familyId)
+        ? r.postCount
+        : r.postCount - r.hiddenCount;
+      return {
+        occasion: r.occasion,
+        year: r.year,
+        postCount: visibleCount,
+      };
+    })
+    .filter((r) => r.postCount > 0 && r.year != null);
+}
+
+export async function loadPostsForOccasion(opts: {
+  userId: string;
+  familyId: string;
+  occasion: "christmas" | "birthday" | "easter" | "other";
+  year?: number;
+}): Promise<FeedPost[]> {
+  const db = getDb();
+  const yearExpr = effectiveYearExpr();
+  const conditions = [
+    eq(posts.familyId, opts.familyId),
+    eq(posts.occasion, opts.occasion),
+  ];
+  if (opts.year != null) {
+    conditions.push(sql`${yearExpr} = ${opts.year}`);
+  }
+  const rows = await db
+    .select({ id: posts.id })
+    .from(posts)
+    .where(and(...conditions))
+    .orderBy(desc(posts.postedAt));
+
+  return loadPostsByIds({
+    userId: opts.userId,
+    postIds: rows.map((r) => r.id),
+  });
+}
+
 export type ExportMemory = {
   id: string;
   body: string | null;

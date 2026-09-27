@@ -263,7 +263,7 @@ See [`docs/federation.md`](./federation.md). Set `APP_URL` to the public **HTTPS
 | Cannot enable push | HTTPS? VAPID env set? Recreate container after env change |
 | Uploads fail | Proxy `client_max_body_size` (≥ 260m for video); disk space on `/data` |
 | Login loops | `AUTH_URL` / `APP_URL` must match the browser origin |
-| Empty media | Volume mounted at `/data`; file permissions for the `node` user |
+| Empty media / `EACCES mkdir '/data/…'` | On Unraid: `chown -R 99:100 /mnt/user/appdata/family-circles/data`, or pull latest image (`PUID`/`PGID` chown on start). |
 | Digest never sends | Cron hitting `/api/cron/digest` with correct `CRON_SECRET` |
 
 ## Related

@@ -81,9 +81,10 @@ export default async function PeoplePage({
                   >
                     {p.displayName}
                   </Link>
-                  {p.birthday ? (
-                    <p className="text-sm text-ink-soft">Birthday {p.birthday}</p>
-                  ) : null}
+                  <p className="text-sm text-ink-soft">
+                    {p.kind === "kid" ? "Kid" : "Adult"}
+                    {p.birthday ? ` · birthday ${p.birthday}` : ""}
+                  </p>
                 </div>
                 {mayManage ? <DeletePersonButton personId={p.id} /> : null}
               </li>

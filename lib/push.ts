@@ -2,6 +2,7 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import webpush from "web-push";
 
 import {
+  comments,
   familyMemberships,
   follows,
   getDb,
@@ -19,6 +20,17 @@ export type NotifyPostInput = {
   authorUserId: string;
   authorName: string;
   preview: string;
+};
+
+export type NotifyCommentInput = {
+  familyId: string;
+  familyName: string;
+  familySlug: string;
+  postId: string;
+  commentAuthorUserId: string;
+  commentAuthorName: string;
+  preview: string;
+  postAuthorUserId: string | null;
 };
 
 function configureWebPush() {
@@ -201,6 +213,79 @@ export async function notifyNewFamilyPost(input: NotifyPostInput) {
     0,
     180,
   );
+  const urlPath = `/families/${input.familySlug}/posts/${input.postId}`;
+
+  let sent = 0;
+  let queued = 0;
+
+  for (const userId of recipients) {
+    const prefs = prefsMap.get(userId) ?? defaultPrefs;
+    if (!prefs.pushEnabled || prefs.mode === "off") continue;
+
+    const quiet = isInQuietHours(
+      now,
+      prefs.timezone,
+      prefs.quietHoursStart,
+      prefs.quietHoursEnd,
+    );
+    const defer = prefs.mode === "digest" || quiet;
+
+    if (defer) {
+      await db.insert(notificationDigestItems).values({
+        userId,
+        familyId: input.familyId,
+        postId: input.postId,
+        title,
+        body,
+        urlPath,
+      });
+      queued += 1;
+      continue;
+    }
+
+    const result = await sendToUserSubscriptions(userId, {
+      title,
+      body,
+      url: urlPath,
+    });
+    sent += result.sent;
+  }
+
+  return { recipients: recipients.length, sent, queued };
+}
+
+/**
+ * Notify post author + other recent commenters about a new comment.
+ * Respects the same push prefs / quiet hours / digest rules as new posts.
+ */
+export async function notifyNewComment(input: NotifyCommentInput) {
+  if (!vapidConfigured()) return { skipped: "vapid_not_configured" as const };
+
+  const db = getDb();
+  const commenterRows = await db
+    .selectDistinct({ userId: comments.authorUserId })
+    .from(comments)
+    .where(eq(comments.postId, input.postId));
+
+  const recipients = [
+    ...new Set(
+      [
+        input.postAuthorUserId,
+        ...commenterRows.map((r) => r.userId),
+      ].filter(
+        (id): id is string =>
+          Boolean(id) && id !== input.commentAuthorUserId,
+      ),
+    ),
+  ];
+
+  if (recipients.length === 0) return { recipients: 0, sent: 0, queued: 0 };
+
+  const prefsMap = await prefsForUsers(recipients);
+  const now = new Date();
+  const title = `${input.familyName}`;
+  const body =
+    `${input.commentAuthorName} commented: ${input.preview}`.slice(0, 180);
   const urlPath = `/families/${input.familySlug}/posts/${input.postId}`;
 
   let sent = 0;

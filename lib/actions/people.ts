@@ -17,9 +17,14 @@ export async function createPersonAction(
   const familyId = String(formData.get("familyId") ?? "");
   const displayName = String(formData.get("displayName") ?? "").trim();
   const birthday = String(formData.get("birthday") ?? "").trim() || null;
+  const kindRaw = String(formData.get("kind") ?? "adult").trim() || "adult";
+  const kindParsed = z.enum(["adult", "kid"]).safeParse(kindRaw);
 
   if (!z.string().uuid().safeParse(familyId).success || displayName.length < 1) {
     return { error: "Enter a name for this person." };
+  }
+  if (!kindParsed.success) {
+    return { error: "Choose adult or kid." };
   }
 
   const membership = await getMembership(user.id!, familyId);
@@ -31,6 +36,7 @@ export async function createPersonAction(
   await db.insert(people).values({
     familyId,
     displayName,
+    kind: kindParsed.data,
     birthday,
   });
 

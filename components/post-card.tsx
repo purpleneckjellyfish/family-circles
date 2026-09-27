@@ -1,19 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
+  deletePostAction,
   hideFollowerPostAction,
   removeFollowerPostAction,
   unhidePostAction,
+  updatePostAction,
 } from "@/lib/actions/posts";
+import { setReactionAction, REACTION_EMOJIS } from "@/lib/actions/reactions";
 import type { ActionState } from "@/lib/actions/auth";
 import type { FeedPost } from "@/lib/feed";
 import { Button } from "@/components/ui/button";
 import { ErrorBanner } from "@/components/ui-states";
 import { MemoryPhoto } from "@/components/memory-photo";
 import { MemoryVideo } from "@/components/memory-video";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 const initial: ActionState = {};
 
@@ -28,20 +34,41 @@ function formatDate(value: string | Date | null) {
   });
 }
 
+function occasionLabel(post: FeedPost) {
+  if (post.occasion === "none") return null;
+  if (post.occasionLabel) return post.occasionLabel;
+  const map = {
+    christmas: "Christmas",
+    birthday: "Birthday",
+    easter: "Easter",
+    other: "Occasion",
+  } as const;
+  return map[post.occasion];
+}
+
 export function PostCard({
   post,
   viewerCanModerate,
+  viewerCanEdit = false,
+  viewerCanDelete = false,
+  viewerCanReact = true,
   showFamilyLink = true,
+  throwbackYearsAgo,
   index = 0,
 }: {
   post: FeedPost;
   viewerCanModerate: boolean;
+  viewerCanEdit?: boolean;
+  viewerCanDelete?: boolean;
+  viewerCanReact?: boolean;
   showFamilyLink?: boolean;
-  /** Stagger entrance when listing many cards. */
+  /** When set, render as an on-this-day throwback card. */
+  throwbackYearsAgo?: number;
   index?: number;
 }) {
   const canModerateFollower =
     viewerCanModerate && post.authorRole === "follower";
+  const [editing, setEditing] = useState(false);
   const [hideState, hideAction, hidePending] = useActionState(
     hideFollowerPostAction,
     initial,
@@ -54,19 +81,46 @@ export function PostCard({
     removeFollowerPostAction,
     initial,
   );
+  const [deleteState, deleteAction, deletePending] = useActionState(
+    deletePostAction,
+    initial,
+  );
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editPending, setEditPending] = useState(false);
+  const [reactState, reactAction, reactPending] = useActionState(
+    setReactionAction,
+    initial,
+  );
 
   const memoryLabel = formatDate(post.memoryDate);
   const postedLabel = formatDate(post.postedAt);
   const hasMedia = post.media.length > 0;
+  const occasion = occasionLabel(post);
   const actionError =
-    hideState.error || unhideState.error || removeState.error;
+    hideState.error ||
+    unhideState.error ||
+    removeState.error ||
+    deleteState.error ||
+    editError ||
+    reactState.error;
 
   return (
     <article
-      className="animate-fc-rise overflow-hidden rounded-xl border border-border/80 bg-card/60 shadow-[0_18px_40px_-32px_rgba(31,26,20,0.45)] transition-[border-color,box-shadow] duration-300 hover:border-forest/35"
+      className={cn(
+        "animate-fc-rise overflow-hidden rounded-xl border bg-card/60 shadow-[0_18px_40px_-32px_rgba(31,26,20,0.45)] transition-[border-color,box-shadow] duration-300 hover:border-forest/35",
+        throwbackYearsAgo != null
+          ? "border-forest/30 bg-forest-soft/20"
+          : "border-border/80",
+      )}
       style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
     >
-      {/* Media leads when present — editorial album, not caption-first chrome. */}
+      {throwbackYearsAgo != null ? (
+        <div className="border-b border-forest/20 bg-forest-soft/40 px-4 py-2 text-sm text-forest">
+          On this day · {throwbackYearsAgo}{" "}
+          {throwbackYearsAgo === 1 ? "year" : "years"} ago
+        </div>
+      ) : null}
+
       {hasMedia ? (
         <div
           className={
@@ -138,20 +192,99 @@ export function PostCard({
               {postedLabel ? ` · posted ${postedLabel}` : null}
             </p>
           </div>
-          {post.hiddenAt ? (
-            <span className="rounded-md bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-ink-soft">
-              Hidden
-            </span>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {occasion ? (
+              <Link
+                href={`/families/${post.familySlug}/browse/occasions/${post.occasion}${post.memoryDate ? `?year=${post.memoryDate.slice(0, 4)}` : ""}`}
+                className="rounded-md bg-muted px-2 py-0.5 text-xs text-ink-soft transition hover:bg-forest-soft hover:text-forest"
+              >
+                {occasion}
+              </Link>
+            ) : null}
+            {post.hiddenAt ? (
+              <span className="rounded-md bg-muted px-2 py-0.5 text-xs uppercase tracking-wide text-ink-soft">
+                Hidden
+              </span>
+            ) : null}
+          </div>
         </header>
 
-        {post.body ? (
+        {editing ? (
+          <form
+            className="mt-3 space-y-3"
+            action={async (fd) => {
+              setEditPending(true);
+              setEditError(null);
+              const result = await updatePostAction({}, fd);
+              setEditPending(false);
+              if (result.error) {
+                setEditError(result.error);
+                return;
+              }
+              setEditing(false);
+            }}
+          >
+            <input type="hidden" name="postId" value={post.id} />
+            <Textarea
+              name="body"
+              defaultValue={post.body ?? ""}
+              rows={4}
+              maxLength={8000}
+            />
+            <div className="flex flex-wrap gap-3">
+              <Input
+                name="memoryDate"
+                type="date"
+                defaultValue={post.memoryDate ?? ""}
+                className="h-8 w-auto"
+              />
+              <select
+                name="occasion"
+                defaultValue={post.occasion}
+                className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm"
+              >
+                <option value="none">No occasion</option>
+                <option value="christmas">Christmas</option>
+                <option value="birthday">Birthday</option>
+                <option value="easter">Easter</option>
+                <option value="other">Other</option>
+              </select>
+              <Input
+                name="occasionLabel"
+                defaultValue={post.occasionLabel ?? ""}
+                placeholder="Label"
+                className="h-8 max-w-[10rem]"
+              />
+            </div>
+            {post.people.map((p) => (
+              <input
+                key={p.id}
+                type="hidden"
+                name="personIds"
+                value={p.id}
+              />
+            ))}
+            <div className="flex gap-2">
+              <Button type="submit" size="sm" disabled={editPending}>
+                {editPending ? "Saving…" : "Save"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditing(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : post.body ? (
           <p className="mt-3 whitespace-pre-wrap text-ink leading-relaxed">
             {post.body}
           </p>
         ) : null}
 
-        {(post.people.length > 0 || post.albums.length > 0) && (
+        {(post.people.length > 0 || post.albums.length > 0) && !editing ? (
           <div className="mt-3 flex flex-wrap gap-2 text-sm text-ink-soft">
             {post.people.map((p) => (
               <Link
@@ -172,9 +305,49 @@ export function PostCard({
               </Link>
             ))}
           </div>
-        )}
+        ) : null}
 
-        <footer className="mt-4 flex flex-wrap items-center gap-3">
+        {viewerCanReact ? (
+          <div className="mt-4 flex flex-wrap items-center gap-1.5">
+            {REACTION_EMOJIS.map((emoji) => {
+              const count =
+                post.reactions.find((r) => r.emoji === emoji)?.count ?? 0;
+              const mine = post.viewerReaction === emoji;
+              return (
+                <form key={emoji} action={reactAction}>
+                  <input type="hidden" name="postId" value={post.id} />
+                  <input type="hidden" name="emoji" value={emoji} />
+                  <button
+                    type="submit"
+                    disabled={reactPending}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-md px-2 py-1 text-sm transition",
+                      mine
+                        ? "bg-forest-soft text-forest ring-1 ring-forest/30"
+                        : "bg-muted/60 text-ink hover:bg-forest-soft/50",
+                    )}
+                    aria-label={`React ${emoji}`}
+                  >
+                    <span>{emoji}</span>
+                    {count > 0 ? (
+                      <span className="text-xs text-ink-soft">{count}</span>
+                    ) : null}
+                  </button>
+                </form>
+              );
+            })}
+          </div>
+        ) : post.reactions.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2 text-sm text-ink-soft">
+            {post.reactions.map((r) => (
+              <span key={r.emoji}>
+                {r.emoji} {r.count}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <footer className="mt-4 flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -186,6 +359,34 @@ export function PostCard({
               ? "1 comment"
               : `${post.commentCount} comments`}
           </Button>
+
+          {viewerCanEdit ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditing(true)}
+            >
+              Edit
+            </Button>
+          ) : null}
+
+          {viewerCanDelete ? (
+            <form action={deleteAction}>
+              <input type="hidden" name="postId" value={post.id} />
+              <Button
+                type="submit"
+                variant="ghost"
+                size="sm"
+                disabled={deletePending}
+                onClick={(e) => {
+                  if (!confirm("Delete this memory?")) e.preventDefault();
+                }}
+              >
+                Delete
+              </Button>
+            </form>
+          ) : null}
 
           {canModerateFollower && !post.hiddenAt ? (
             <form action={hideAction}>

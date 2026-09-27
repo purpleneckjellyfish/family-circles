@@ -65,6 +65,18 @@ export function CreatePersonForm({ familyId }: { familyId: string }) {
         <Input id="displayName" name="displayName" required maxLength={80} />
       </div>
       <div className="space-y-2">
+        <Label htmlFor="kind">Adult or kid</Label>
+        <select
+          id="kind"
+          name="kind"
+          defaultValue="adult"
+          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+        >
+          <option value="adult">Adult</option>
+          <option value="kid">Kid</option>
+        </select>
+      </div>
+      <div className="space-y-2">
         <Label htmlFor="birthday">Birthday (optional)</Label>
         <Input id="birthday" name="birthday" type="date" />
       </div>

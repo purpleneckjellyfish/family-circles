@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { ComposePostForm } from "@/components/compose-post-form";
 import { SiteHeader } from "@/components/site-header";
 import { albums, families, getDb, people } from "@/db";
-import { canContribute, getMembership } from "@/lib/permissions";
+import { canCreatePost } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 
 export const metadata = { title: "New memory" };
@@ -26,8 +26,7 @@ export default async function NewPostPage({
     .limit(1);
   if (!family) notFound();
 
-  const membership = await getMembership(user.id!, family.id);
-  if (!canContribute(membership?.role)) {
+  if (!(await canCreatePost(user.id!, family.id))) {
     redirect(`/families/${slug}`);
   }
 
@@ -53,14 +52,20 @@ export default async function NewPostPage({
           New memory
         </h1>
         <p className="mt-2 text-ink-soft">
-          Text, photos, or both. Memory date can come from EXIF and stay editable.
+          Caption, photos, people tags, or an occasion — same composer as Home.
         </p>
         <div className="mt-8">
           <ComposePostForm
-            familyId={family.id}
-            familySlug={family.slug}
-            people={peopleRows}
-            albums={albumRows}
+            defaultFamilyId={family.id}
+            circles={[
+              {
+                id: family.id,
+                slug: family.slug,
+                name: family.name,
+                people: peopleRows,
+                albums: albumRows,
+              },
+            ]}
           />
         </div>
       </main>

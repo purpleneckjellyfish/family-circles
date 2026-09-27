@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { and, asc, eq } from "drizzle-orm";
 
-import { CommentForm } from "@/components/comment-form";
+import { CommentForm, CommentListItem } from "@/components/comment-form";
 import { PostCard } from "@/components/post-card";
 import { SiteHeader } from "@/components/site-header";
 import {
@@ -14,7 +14,11 @@ import {
 } from "@/db";
 import { loadFeedPosts } from "@/lib/feed";
 import {
-  canContribute,
+  canCommentOrReact,
+  canDeleteComment,
+  canDeletePost,
+  canEditComment,
+  canEditPost,
   canModerate,
   getMembership,
 } from "@/lib/permissions";
@@ -75,13 +79,15 @@ export default async function PostDetailPage({
       body: comments.body,
       createdAt: comments.createdAt,
       authorName: users.name,
+      authorId: comments.authorUserId,
     })
     .from(comments)
     .leftJoin(users, eq(users.id, comments.authorUserId))
     .where(eq(comments.postId, postId))
     .orderBy(asc(comments.createdAt));
 
-  const mayComment = canContribute(membership?.role);
+  const mayComment =
+    canCommentOrReact(membership?.role) || Boolean(follow);
   const viewerCanModerate = canModerate(membership?.role);
 
   return (
@@ -97,6 +103,16 @@ export default async function PostDetailPage({
           <PostCard
             post={post}
             viewerCanModerate={viewerCanModerate}
+            viewerCanEdit={canEditPost({
+              viewerRole: membership?.role,
+              viewerId: user.id!,
+              authorId: post.authorId,
+            })}
+            viewerCanDelete={canDeletePost({
+              viewerRole: membership?.role,
+              viewerId: user.id!,
+              authorId: post.authorId,
+            })}
             showFamilyLink={false}
           />
         </div>
@@ -108,16 +124,24 @@ export default async function PostDetailPage({
               <li className="text-ink-soft">No comments yet.</li>
             ) : (
               commentRows.map((c) => (
-                <li
+                <CommentListItem
                   key={c.id}
-                  className="rounded-lg border border-border/70 bg-card/50 px-4 py-3"
-                >
-                  <p className="text-sm text-ink-soft">
-                    {c.authorName ?? "Someone"} ·{" "}
-                    {c.createdAt.toLocaleString()}
-                  </p>
-                  <p className="mt-1 whitespace-pre-wrap text-ink">{c.body}</p>
-                </li>
+                  comment={{
+                    id: c.id,
+                    body: c.body,
+                    createdAt: c.createdAt,
+                    authorName: c.authorName,
+                  }}
+                  canEdit={canEditComment({
+                    viewerId: user.id!,
+                    authorId: c.authorId,
+                  })}
+                  canDelete={canDeleteComment({
+                    viewerRole: membership?.role,
+                    viewerId: user.id!,
+                    authorId: c.authorId,
+                  })}
+                />
               ))
             )}
           </ul>

@@ -1,14 +1,29 @@
 import Link from "next/link";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
+import {
+  ComposePostForm,
+  type ComposerCircle,
+} from "@/components/compose-post-form";
 import { PostCard } from "@/components/post-card";
 import { SiteHeader } from "@/components/site-header";
-import { ThrowbacksPanel } from "@/components/throwbacks-panel";
 import { EmptyState } from "@/components/ui-states";
 import { Button } from "@/components/ui/button";
-import { families, familyMemberships, follows, getDb } from "@/db";
+import {
+  albums,
+  families,
+  familyMemberships,
+  follows,
+  getDb,
+  people,
+} from "@/db";
 import { loadFeedPosts } from "@/lib/feed";
-import { canModerate } from "@/lib/permissions";
+import {
+  canDeletePost,
+  canEditPost,
+  canModerate,
+  familiesUserCanPostTo,
+} from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 import { loadThrowbacks } from "@/lib/throwbacks";
 
@@ -25,6 +40,7 @@ export default async function AppHomePage() {
       slug: families.slug,
       summary: families.summary,
       role: familyMemberships.role,
+      canPost: familyMemberships.canPost,
     })
     .from(familyMemberships)
     .innerJoin(families, eq(families.id, familyMemberships.familyId))
@@ -57,6 +73,64 @@ export default async function AppHomePage() {
   const moderateFamilies = new Set(
     memberships.filter((m) => canModerate(m.role)).map((m) => m.id),
   );
+  const roleByFamily = new Map(memberships.map((m) => [m.id, m.role]));
+
+  const postable = await familiesUserCanPostTo(user.id!);
+  const postableIds = postable.map((p) => p.familyId);
+  let composerCircles: ComposerCircle[] = [];
+  if (postableIds.length > 0) {
+    const circleRows = await db
+      .select({
+        id: families.id,
+        slug: families.slug,
+        name: families.name,
+      })
+      .from(families)
+      .where(inArray(families.id, postableIds));
+    const peopleRows = await db
+      .select({
+        id: people.id,
+        familyId: people.familyId,
+        displayName: people.displayName,
+      })
+      .from(people)
+      .where(inArray(people.familyId, postableIds));
+    const albumRows = await db
+      .select({
+        id: albums.id,
+        familyId: albums.familyId,
+        title: albums.title,
+      })
+      .from(albums)
+      .where(inArray(albums.familyId, postableIds));
+
+    composerCircles = circleRows.map((c) => ({
+      id: c.id,
+      slug: c.slug,
+      name: c.name,
+      people: peopleRows
+        .filter((p) => p.familyId === c.id)
+        .map((p) => ({ id: p.id, displayName: p.displayName })),
+      albums: albumRows
+        .filter((a) => a.familyId === c.id)
+        .map((a) => ({ id: a.id, title: a.title })),
+    }));
+  }
+
+  const feedIds = new Set(feed.map((p) => p.id));
+  const throwbackItems = throwbacks.memories
+    .filter((t) => !feedIds.has(t.post.id))
+    .map((t) => ({
+      kind: "throwback" as const,
+      post: t.post,
+      yearsAgo: t.yearsAgo,
+    }));
+  const postItems = feed.map((post) => ({
+    kind: "post" as const,
+    post,
+  }));
+  // Throwbacks first (on-this-day), then chronological feed
+  const ordered = [...throwbackItems, ...postItems];
 
   const firstFamily = familyMembers[0] ?? collaboratorMemberships[0];
   const [y, m, d] = throwbacks.today.split("-").map(Number);
@@ -64,8 +138,6 @@ export default async function AppHomePage() {
     undefined,
     { month: "long", day: "numeric" },
   );
-  const hasThrowbacks =
-    throwbacks.memories.length > 0 || throwbacks.milestones.length > 0;
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -77,7 +149,11 @@ export default async function AppHomePage() {
               Hello, {user.name?.split(" ")[0] ?? "there"}
             </h1>
             <p className="mt-2 text-ink-soft">
-              Memories from your circles and the ones you follow.
+              Memories from your circles
+              {throwbacks.memories.length > 0
+                ? ` · throwbacks for ${throwbackDayLabel}`
+                : ""}
+              .
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -87,46 +163,21 @@ export default async function AppHomePage() {
             <Button variant="outline" render={<Link href="/browse" />}>
               Browse
             </Button>
-            {firstFamily ? (
-              <Button
-                render={
-                  <Link href={`/families/${firstFamily.slug}/posts/new`} />
-                }
-              >
-                New memory
-              </Button>
-            ) : (
+            {!composerCircles.length ? (
               <Button render={<Link href="/families/new" />}>New circle</Button>
-            )}
+            ) : null}
           </div>
         </div>
 
-        {hasThrowbacks ? (
-          <section className="mt-10 rounded-xl border border-forest/25 bg-forest-soft/30 p-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-display text-2xl text-ink">Throwbacks</h2>
-              <Link
-                href="/throwbacks"
-                className="text-sm text-forest underline-offset-4 hover:underline"
-              >
-                Full page
-              </Link>
-            </div>
-            <div className="mt-4">
-              <ThrowbacksPanel
-                todayLabel={throwbackDayLabel}
-                memories={throwbacks.memories}
-                milestones={throwbacks.milestones}
-                moderateFamilyIds={moderateFamilies}
-                compact
-              />
-            </div>
+        {composerCircles.length > 0 ? (
+          <section className="mt-8">
+            <ComposePostForm circles={composerCircles} compact />
           </section>
         ) : null}
 
         <section className="mt-10">
           <h2 className="font-display text-2xl text-ink">Feed</h2>
-          {feed.length === 0 ? (
+          {ordered.length === 0 ? (
             <EmptyState
               className="mt-4"
               title="No memories yet"
@@ -140,14 +191,32 @@ export default async function AppHomePage() {
             />
           ) : (
             <div className="mt-4 space-y-5">
-              {feed.map((post, i) => (
-                <PostCard
-                  key={post.id}
-                  post={post}
-                  index={i}
-                  viewerCanModerate={moderateFamilies.has(post.familyId)}
-                />
-              ))}
+              {ordered.map((item, i) => {
+                const role = roleByFamily.get(item.post.familyId);
+                const canEdit = canEditPost({
+                  viewerRole: role,
+                  viewerId: user.id!,
+                  authorId: item.post.authorId,
+                });
+                const canDelete = canDeletePost({
+                  viewerRole: role,
+                  viewerId: user.id!,
+                  authorId: item.post.authorId,
+                });
+                return (
+                  <PostCard
+                    key={`${item.kind}-${item.post.id}`}
+                    post={item.post}
+                    index={i}
+                    viewerCanModerate={moderateFamilies.has(item.post.familyId)}
+                    viewerCanEdit={canEdit}
+                    viewerCanDelete={canDelete}
+                    throwbackYearsAgo={
+                      item.kind === "throwback" ? item.yearsAgo : undefined
+                    }
+                  />
+                );
+              })}
             </div>
           )}
         </section>
@@ -204,14 +273,15 @@ export default async function AppHomePage() {
           {collaboratorMemberships.length === 0 && followOnly.length === 0 ? (
             <p className="mt-3 text-ink-soft">
               Follow another circle on this instance, or accept a collaborator
-              invite.
+              invite. Followers browse quietly unless an owner grants photo
+              posting.
             </p>
           ) : (
             <ul className="mt-4 space-y-3">
               {[
                 ...collaboratorMemberships.map((f) => ({
                   ...f,
-                  badge: f.role as string,
+                  badge: f.canPost ? "can post" : "follower",
                 })),
                 ...followOnly.map((f) => ({ ...f, badge: "following" })),
               ].map((f) => (

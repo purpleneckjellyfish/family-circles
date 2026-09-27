@@ -5,12 +5,20 @@ import { SiteHeader } from "@/components/site-header";
 import { EmptyState } from "@/components/ui-states";
 import {
   listAlbumsWithPostCounts,
+  listOccasionsWithPostCounts,
   listPeopleWithPostCounts,
   listYearsWithPostCounts,
 } from "@/lib/browse";
 import { requireFamilyView } from "@/lib/family-access";
 
 export const metadata = { title: "Browse" };
+
+const OCCASION_LABELS: Record<string, string> = {
+  christmas: "Christmas",
+  birthday: "Birthday",
+  easter: "Easter",
+  other: "Other",
+};
 
 export default async function FamilyBrowsePage({
   params,
@@ -20,10 +28,11 @@ export default async function FamilyBrowsePage({
   const { slug } = await params;
   const { user, family } = await requireFamilyView(slug);
 
-  const [peopleRows, yearRows, albumRows] = await Promise.all([
+  const [peopleRows, yearRows, albumRows, occasionRows] = await Promise.all([
     listPeopleWithPostCounts(family.id),
     listYearsWithPostCounts(family.id, user.id!),
     listAlbumsWithPostCounts(family.id),
+    listOccasionsWithPostCounts(family.id, user.id!),
   ]);
 
   return (
@@ -39,11 +48,40 @@ export default async function FamilyBrowsePage({
           Browse
         </h1>
         <p className="mt-2 text-ink-soft">
-          Find memories by person, year, or album.
+          Find memories by person, year, occasion, or album.
         </p>
         <FamilySubnav slug={slug} active="browse" />
 
         <section className="mt-10">
+          <h2 className="font-display text-2xl text-ink">By occasion</h2>
+          {occasionRows.length === 0 ? (
+            <p className="mt-4 text-ink-soft">
+              Tag Christmas, birthdays, and more when you share a memory.
+            </p>
+          ) : (
+            <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {occasionRows.map((o) => (
+                <li key={`${o.occasion}-${o.year}`}>
+                  <Link
+                    href={`/families/${slug}/browse/occasions/${o.occasion}?year=${o.year}`}
+                    className="flex flex-col rounded-xl border border-border/80 bg-card/50 px-4 py-3 hover:border-forest/40"
+                  >
+                    <span className="font-display text-xl text-ink">
+                      {OCCASION_LABELS[o.occasion] ?? o.occasion} {o.year}
+                    </span>
+                    <span className="text-sm text-ink-soft">
+                      {o.postCount === 1
+                        ? "1 memory"
+                        : `${o.postCount} memories`}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="mt-12">
           <h2 className="font-display text-2xl text-ink">By person</h2>
           {peopleRows.length === 0 ? (
             <EmptyState

@@ -20,7 +20,9 @@ import type { ActionState } from "@/lib/actions/auth";
 import { memoryDateFromImageBytes } from "@/lib/exif";
 import { removeMediaFiles, storeImageFile, storeVideoFile } from "@/lib/media-storage";
 import {
-  canContribute,
+  canCreatePost,
+  canDeletePost,
+  canEditPost,
   canModerate,
   getMembership,
 } from "@/lib/permissions";
@@ -29,10 +31,16 @@ import { requireUser } from "@/lib/session";
 import { ensureLocalFamilyActor } from "@/lib/federation/actor";
 import { fanOutLocalPost } from "@/lib/federation/activities";
 
-function revalidateFamily(slug: string) {
+const occasionSchema = z.enum(["none", "christmas", "birthday", "easter", "other"]);
+
+function revalidateFamily(slug: string, postId?: string) {
   revalidatePath("/home");
   revalidatePath(`/families/${slug}`);
   revalidatePath(`/families/${slug}/albums`);
+  revalidatePath(`/families/${slug}/browse`);
+  if (postId) {
+    revalidatePath(`/families/${slug}/posts/${postId}`);
+  }
 }
 
 export async function createPostAction(
@@ -45,6 +53,9 @@ export async function createPostAction(
   const body = String(formData.get("body") ?? "").trim();
   let memoryDate = String(formData.get("memoryDate") ?? "").trim() || null;
   const albumId = String(formData.get("albumId") ?? "").trim() || null;
+  const occasionRaw = String(formData.get("occasion") ?? "none").trim() || "none";
+  const occasionLabel =
+    String(formData.get("occasionLabel") ?? "").trim() || null;
   const personIds = formData
     .getAll("personIds")
     .map(String)
@@ -54,8 +65,13 @@ export async function createPostAction(
     return { error: "Invalid family." };
   }
 
-  const membership = await getMembership(user.id!, familyId);
-  if (!canContribute(membership?.role)) {
+  const occasionParsed = occasionSchema.safeParse(occasionRaw);
+  if (!occasionParsed.success) {
+    return { error: "Invalid occasion." };
+  }
+  const occasion = occasionParsed.data;
+
+  if (!(await canCreatePost(user.id!, familyId))) {
     return { error: "You cannot post in this circle." };
   }
 
@@ -104,7 +120,6 @@ export async function createPostAction(
     }
   }
 
-  // Create post first so media paths can include postId.
   const [post] = await db
     .insert(posts)
     .values({
@@ -112,6 +127,8 @@ export async function createPostAction(
       authorUserId: user.id!,
       body: body || null,
       memoryDate,
+      occasion,
+      occasionLabel: occasion === "other" || occasion === "birthday" ? occasionLabel : null,
     })
     .returning();
 
@@ -143,7 +160,7 @@ export async function createPostAction(
         width = meta.width ?? null;
         height = meta.height ?? null;
       } catch {
-        /* keep nulls if sharp cannot decode (e.g. HEIC without support) */
+        /* keep nulls if sharp cannot decode */
       }
       const exifDate = await memoryDateFromImageBytes(bytes);
       stored.push({
@@ -187,7 +204,6 @@ export async function createPostAction(
     };
   }
 
-  // If the form left memory date blank, prefill from earliest EXIF (server-side backup).
   if (!memoryDate) {
     const exifDates = stored
       .map((s) => s.exifDate)
@@ -231,7 +247,6 @@ export async function createPostAction(
 
   const photoCount = stored.filter((s) => s.kind === "image").length;
   const videoCount = stored.filter((s) => s.kind === "video").length;
-  // Fire-and-forget push / digest queue (errors must not block posting).
   const preview =
     body ||
     (videoCount && !photoCount
@@ -253,13 +268,135 @@ export async function createPostAction(
     preview,
   }).catch(() => undefined);
 
-  // Federate to remote followers (async; posting must not wait on delivery).
   void ensureLocalFamilyActor(familyId)
     .then((ready) => fanOutLocalPost({ family: ready, postId: post.id }))
     .catch(() => undefined);
 
-  revalidateFamily(slug);
+  revalidateFamily(slug, post.id);
   redirect(`/families/${slug}/posts/${post.id}`);
+}
+
+export async function updatePostAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const postId = String(formData.get("postId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  const memoryDate = String(formData.get("memoryDate") ?? "").trim() || null;
+  const occasionRaw = String(formData.get("occasion") ?? "none").trim() || "none";
+  const occasionLabel =
+    String(formData.get("occasionLabel") ?? "").trim() || null;
+  const personIds = formData
+    .getAll("personIds")
+    .map(String)
+    .filter(Boolean);
+
+  if (!z.string().uuid().safeParse(postId).success) {
+    return { error: "Invalid post." };
+  }
+  const occasionParsed = occasionSchema.safeParse(occasionRaw);
+  if (!occasionParsed.success) {
+    return { error: "Invalid occasion." };
+  }
+
+  const db = getDb();
+  const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  if (!post) return { error: "Post not found." };
+
+  const membership = await getMembership(user.id!, post.familyId);
+  if (
+    !canEditPost({
+      viewerRole: membership?.role,
+      viewerId: user.id!,
+      authorId: post.authorUserId,
+    })
+  ) {
+    return { error: "You cannot edit this memory." };
+  }
+
+  if (personIds.length > 0) {
+    const known = await db
+      .select({ id: people.id })
+      .from(people)
+      .where(eq(people.familyId, post.familyId));
+    const knownSet = new Set(known.map((p) => p.id));
+    if (personIds.some((id) => !knownSet.has(id))) {
+      return { error: "A tagged person is not in this circle." };
+    }
+  }
+
+  const occasion = occasionParsed.data;
+  await db
+    .update(posts)
+    .set({
+      body: body || null,
+      memoryDate,
+      occasion,
+      occasionLabel:
+        occasion === "other" || occasion === "birthday" ? occasionLabel : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(posts.id, postId));
+
+  await db.delete(postPeople).where(eq(postPeople.postId, postId));
+  if (personIds.length > 0) {
+    await db.insert(postPeople).values(
+      personIds.map((personId) => ({ postId, personId })),
+    );
+  }
+
+  const [family] = await db
+    .select({ slug: families.slug })
+    .from(families)
+    .where(eq(families.id, post.familyId))
+    .limit(1);
+  if (family) revalidateFamily(family.slug, postId);
+  return { success: "updated" };
+}
+
+export async function deletePostAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const postId = String(formData.get("postId") ?? "");
+  if (!z.string().uuid().safeParse(postId).success) {
+    return { error: "Invalid post." };
+  }
+
+  const db = getDb();
+  const [post] = await db.select().from(posts).where(eq(posts.id, postId)).limit(1);
+  if (!post) return { error: "Post not found." };
+
+  const membership = await getMembership(user.id!, post.familyId);
+  if (
+    !canDeletePost({
+      viewerRole: membership?.role,
+      viewerId: user.id!,
+      authorId: post.authorUserId,
+    })
+  ) {
+    return { error: "You cannot delete this memory." };
+  }
+
+  const mediaRows = await db.select().from(media).where(eq(media.postId, postId));
+  await db.delete(posts).where(eq(posts.id, postId));
+
+  for (const m of mediaRows) {
+    await removeMediaFiles(m.storagePath);
+  }
+
+  const [family] = await db
+    .select({ slug: families.slug })
+    .from(families)
+    .where(eq(families.id, post.familyId))
+    .limit(1);
+  if (family) {
+    revalidateFamily(family.slug);
+    redirect(`/families/${family.slug}`);
+  }
+  return { success: "deleted" };
 }
 
 export async function hideFollowerPostAction(
@@ -298,7 +435,7 @@ export async function hideFollowerPostAction(
     .from(families)
     .where(eq(families.id, post.familyId))
     .limit(1);
-  if (family) revalidateFamily(family.slug);
+  if (family) revalidateFamily(family.slug, postId);
   return { success: "hidden" };
 }
 
@@ -331,7 +468,7 @@ export async function unhidePostAction(
     .from(families)
     .where(eq(families.id, post.familyId))
     .limit(1);
-  if (family) revalidateFamily(family.slug);
+  if (family) revalidateFamily(family.slug, postId);
   return { success: "unhidden" };
 }
 

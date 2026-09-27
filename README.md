@@ -72,17 +72,18 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/digest"
 
 Run that **hourly** from Unraid / cron. Delivery happens when the user’s local hour equals their digest hour and they are outside quiet hours.
 
-## Try the product (Phases 1–8)
+## Try the product
 
 1. **Create account** at `/signup`.
-2. **Create a circle** (Home → New circle) — publishes a federated actor.
-3. **People** / **Albums** / **Milestones** as needed.
-4. **New memory** → caption and/or photos; optional **videos** (MP4/MOV/WebM; server transcodes with ffmpeg).
-5. **Home feed** + **Throwbacks** — videos play inline with poster frames.
-6. **Alerts** → enable push + quiet hours / digest.
-7. **Browse** (`/families/<slug>/browse`) → by person, year, or album.
-8. **Export** (`/families/<slug>/export`) → Download ZIP (images, playable videos, captions/dates).
-9. **Federation** → Browse → Follow a remote circle (`https://other/families/slug` or `acct:slug@host`). See [docs/federation.md](docs/federation.md).
+2. **Create a circle** — add adults/kids on the roster; adults with email get invite links (copy or mailto).
+3. **Home feed** — inline composer (photo / video / people / occasion). Followers are quiet by default; owners grant **Can add photos** per person.
+4. **React** with 👍 ❤️ 😂 😮 😢; everyone who can see the circle can comment and react. Comments notify the post author (and other recent commenters).
+5. **Throwbacks** appear in the home feed on matching days (Throwbacks tab still available).
+6. **Browse** by person, year, occasion (e.g. Christmas 2026), or album.
+7. Videos **autoplay muted** when scrolled into view; tap for sound.
+8. **Alerts** → enable push + quiet hours / digest.
+9. **Export** (`/families/<slug>/export`) → Download ZIP.
+10. **Federation** → Follow a remote circle. See [docs/federation.md](docs/federation.md).
 
 Video needs **ffmpeg** on the host (dev) or in the Docker image (see [docs/unraid.md](docs/unraid.md)).
 

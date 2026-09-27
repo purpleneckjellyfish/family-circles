@@ -101,6 +101,8 @@ export const familyMemberships = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: membershipRoleEnum("role").notNull().default("adult"),
+    /** Owner may grant follower-role members permission to create posts. */
+    canPost: boolean("can_post").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -129,6 +131,8 @@ export const follows = pgTable(
       .notNull()
       .references(() => families.id, { onDelete: "cascade" }),
     status: followStatusEnum("status").notNull().default("accepted"),
+    /** Owner may grant this follower permission to create posts. */
+    canPost: boolean("can_post").default(false).notNull(),
     /** Remote Follow activity URI when the follow is federated. */
     remoteUri: text("remote_uri"),
     instanceHost: text("instance_host"),
@@ -176,6 +180,8 @@ export const federatedFollowers = pgTable(
 );
 
 /** People who can be tagged in memories (kids may have no user account). */
+export const personKindEnum = pgEnum("person_kind", ["adult", "kid"]);
+
 export const people = pgTable(
   "people",
   {
@@ -184,6 +190,7 @@ export const people = pgTable(
       .notNull()
       .references(() => families.id, { onDelete: "cascade" }),
     displayName: text("display_name").notNull(),
+    kind: personKindEnum("kind").notNull().default("adult"),
     linkedUserId: uuid("linked_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -241,6 +248,15 @@ export const albums = pgTable(
   (table) => [index("albums_family_idx").on(table.familyId)],
 );
 
+/** Occasions for looking back (Christmas 2026, birthdays, etc.). */
+export const occasionEnum = pgEnum("occasion", [
+  "none",
+  "christmas",
+  "birthday",
+  "easter",
+  "other",
+]);
+
 export const posts = pgTable(
   "posts",
   {
@@ -254,6 +270,8 @@ export const posts = pgTable(
     body: text("body"),
     /** When the memory happened (EXIF/user-chosen); distinct from postedAt. */
     memoryDate: date("memory_date"),
+    occasion: occasionEnum("occasion").notNull().default("none"),
+    occasionLabel: text("occasion_label"),
     postedAt: timestamp("posted_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -274,6 +292,7 @@ export const posts = pgTable(
     uniqueIndex("posts_remote_uri_uidx").on(table.remoteUri),
     index("posts_family_posted_idx").on(table.familyId, table.postedAt),
     index("posts_memory_date_idx").on(table.memoryDate),
+    index("posts_occasion_idx").on(table.occasion),
   ],
 );
 
@@ -356,6 +375,28 @@ export const comments = pgTable(
   (table) => [
     index("comments_post_idx").on(table.postId),
     uniqueIndex("comments_remote_uri_uidx").on(table.remoteUri),
+  ],
+);
+
+/** One emoji reaction per user per post (changing emoji updates the row). */
+export const postReactions = pgTable(
+  "post_reactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    postId: uuid("post_id")
+      .notNull()
+      .references(() => posts.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emoji: text("emoji").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("post_reactions_post_user_uidx").on(table.postId, table.userId),
+    index("post_reactions_post_idx").on(table.postId),
   ],
 );
 

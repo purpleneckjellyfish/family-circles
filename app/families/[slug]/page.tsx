@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 
 import { SiteHeader } from "@/components/site-header";
-import { FollowButton, InviteForm } from "@/components/family-forms";
+import {
+  FollowButton,
+  FollowerCanPostToggle,
+  InviteForm,
+} from "@/components/family-forms";
 import { FamilySubnav } from "@/components/family-subnav";
 import { PostCard } from "@/components/post-card";
 import { EmptyState } from "@/components/ui-states";
@@ -20,9 +24,12 @@ import { env } from "@/lib/env";
 import { ensureLocalFamilyActor, isLocalFamily } from "@/lib/federation/actor";
 import { familyActorUrl, webfingerAcct } from "@/lib/federation/urls";
 import {
-  canContribute,
+  canCreatePost,
+  canDeletePost,
+  canEditPost,
   canModerate,
   isFamilyMember,
+  isOwner,
 } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 
@@ -37,11 +44,14 @@ export async function generateMetadata({
 
 export default async function FamilyPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ invites?: string }>;
 }) {
   const user = await requireUser();
   const { slug } = await params;
+  const sp = await searchParams;
   const db = getDb();
 
   const [family] = await db
@@ -64,6 +74,7 @@ export default async function FamilyPage({
       name: users.name,
       email: users.email,
       role: familyMemberships.role,
+      canPost: familyMemberships.canPost,
     })
     .from(familyMemberships)
     .innerJoin(users, eq(users.id, familyMemberships.userId))
@@ -72,7 +83,9 @@ export default async function FamilyPage({
   const myMembership = members.find((m) => m.id === user.id);
   const canInvite = !remoteCircle && canModerate(myMembership?.role);
   const familyMember = isFamilyMember(myMembership?.role);
-  const mayPost = !remoteCircle && canContribute(myMembership?.role);
+  const ownerViewer = isOwner(myMembership?.role);
+  const mayPost =
+    !remoteCircle && (await canCreatePost(user.id!, family.id));
   const viewerCanModerate = !remoteCircle && canModerate(myMembership?.role);
 
   const [myFollow] = await db
@@ -96,6 +109,15 @@ export default async function FamilyPage({
         limit: 30,
       })
     : [];
+
+  const freshInvites = (sp.invites ?? "")
+    .split(",")
+    .map((part) => {
+      const [email, token] = part.split("|");
+      if (!email || !token) return null;
+      return { email: decodeURIComponent(email), token };
+    })
+    .filter((x): x is { email: string; token: string } => Boolean(x));
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -126,6 +148,9 @@ export default async function FamilyPage({
             {myMembership ? (
               <p className="mt-3 text-sm text-forest">
                 Your role: <span className="font-medium">{myMembership.role}</span>
+                {myMembership.role === "follower" && myMembership.canPost
+                  ? " · can add photos"
+                  : null}
               </p>
             ) : null}
           </div>
@@ -143,6 +168,41 @@ export default async function FamilyPage({
             ) : null}
           </div>
         </div>
+
+        {freshInvites.length > 0 ? (
+          <section className="mt-6 rounded-xl border border-forest/30 bg-forest-soft/30 p-4">
+            <h2 className="font-display text-xl text-ink">Adult invites ready</h2>
+            <p className="mt-1 text-sm text-ink-soft">
+              Copy a link or open email for each adult you added.
+            </p>
+            <ul className="mt-3 space-y-3">
+              {freshInvites.map((inv) => {
+                const url = `${env.appUrl}/invite/${inv.token}`;
+                const mailto = `mailto:${encodeURIComponent(inv.email)}?subject=${encodeURIComponent(`Join ${family.name} on Family Circles`)}&body=${encodeURIComponent(`You're invited to ${family.name}.\n\n${url}\n`)}`;
+                return (
+                  <li
+                    key={inv.token}
+                    className="rounded-lg border border-border/70 bg-card/60 px-3 py-2"
+                  >
+                    <p className="text-sm text-ink">{inv.email}</p>
+                    <p className="mt-1 break-all font-mono text-xs text-ink-soft">
+                      {url}
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        render={<a href={mailto} />}
+                      >
+                        Open email
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
 
         {!remoteCircle && canInvite ? (
           <p className="mt-4 text-xs text-ink-soft">
@@ -185,6 +245,16 @@ export default async function FamilyPage({
                     post={post}
                     index={i}
                     viewerCanModerate={viewerCanModerate}
+                    viewerCanEdit={canEditPost({
+                      viewerRole: myMembership?.role,
+                      viewerId: user.id!,
+                      authorId: post.authorId,
+                    })}
+                    viewerCanDelete={canDeletePost({
+                      viewerRole: myMembership?.role,
+                      viewerId: user.id!,
+                      authorId: post.authorId,
+                    })}
                     showFamilyLink={false}
                   />
                 ))}
@@ -195,19 +265,35 @@ export default async function FamilyPage({
 
         <section className="mt-10">
           <h2 className="font-display text-2xl text-ink">People in the circle</h2>
+          <p className="mt-2 text-sm text-ink-soft">
+            Followers comment and react freely. Only the owner can grant photo
+            posting per person.
+          </p>
           <ul className="mt-4 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
             {members.map((m) => (
               <li
                 key={m.id}
-                className="flex items-center justify-between gap-3 px-4 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
               >
                 <div>
                   <p className="text-ink">{m.name}</p>
                   <p className="text-sm text-ink-soft">{m.email}</p>
                 </div>
-                <span className="text-xs uppercase tracking-wide text-ink-soft">
-                  {m.role}
-                </span>
+                <div className="flex items-center gap-3">
+                  {ownerViewer && m.role === "follower" ? (
+                    <FollowerCanPostToggle
+                      familyId={family.id}
+                      userId={m.id}
+                      canPost={m.canPost}
+                      name={m.name}
+                    />
+                  ) : m.role === "follower" && m.canPost ? (
+                    <span className="text-xs text-forest">Can add photos</span>
+                  ) : null}
+                  <span className="text-xs uppercase tracking-wide text-ink-soft">
+                    {m.role}
+                  </span>
+                </div>
               </li>
             ))}
           </ul>
@@ -217,8 +303,8 @@ export default async function FamilyPage({
           <section className="mt-10">
             <h2 className="font-display text-2xl text-ink">Invites</h2>
             <p className="mt-2 text-sm text-ink-soft">
-              Family members join as adults. Collaborators join as followers and
-              can contribute memories.
+              Family members join as adults. Collaborators join as followers —
+              quiet by default until you grant photo posting.
             </p>
             <div className="mt-4">
               <InviteForm familyId={family.id} appUrl={env.appUrl} />

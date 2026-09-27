@@ -12,9 +12,11 @@ import {
   follows,
   getDb,
   invites,
+  people,
 } from "@/db";
 import type { ActionState } from "@/lib/actions/auth";
 import { ensureLocalFamilyActor } from "@/lib/federation/actor";
+import { isOwner, getMembership } from "@/lib/permissions";
 import { requireUser } from "@/lib/session";
 import { slugify } from "@/lib/slug";
 
@@ -22,6 +24,8 @@ const createFamilySchema = z.object({
   name: z.string().trim().min(2).max(80),
   summary: z.string().trim().max(280).optional(),
 });
+
+const personKindSchema = z.enum(["adult", "kid"]);
 
 async function uniqueSlug(db: ReturnType<typeof getDb>, name: string) {
   const base = slugify(name);
@@ -51,6 +55,38 @@ export async function createFamilyAction(
     return { error: "Give your circle a name (at least 2 characters)." };
   }
 
+  const rosterRaw = String(formData.get("rosterJson") ?? "[]");
+  let roster: Array<{
+    displayName: string;
+    kind: "adult" | "kid";
+    birthday?: string;
+    inviteEmail?: string;
+  }> = [];
+  try {
+    const parsedRoster = JSON.parse(rosterRaw) as unknown;
+    if (Array.isArray(parsedRoster)) {
+      roster = parsedRoster
+        .map((row) => {
+          if (!row || typeof row !== "object") return null;
+          const r = row as Record<string, unknown>;
+          const displayName = String(r.displayName ?? "").trim();
+          const kindParsed = personKindSchema.safeParse(r.kind ?? "adult");
+          if (!displayName || !kindParsed.success) return null;
+          const birthday = String(r.birthday ?? "").trim() || undefined;
+          const inviteEmail = String(r.inviteEmail ?? "").trim() || undefined;
+          return {
+            displayName,
+            kind: kindParsed.data,
+            birthday,
+            inviteEmail,
+          };
+        })
+        .filter((x): x is NonNullable<typeof x> => Boolean(x));
+    }
+  } catch {
+    return { error: "Could not read the family roster." };
+  }
+
   const db = getDb();
   const slug = await uniqueSlug(db, parsed.data.name);
 
@@ -69,9 +105,37 @@ export async function createFamilyAction(
     role: "owner",
   });
 
-  // Publish ActivityPub actor IRIs + keys so other Unraid hosts can follow.
+  for (const person of roster) {
+    await db.insert(people).values({
+      familyId: family.id,
+      displayName: person.displayName,
+      kind: person.kind,
+      birthday: person.birthday || null,
+    });
+  }
+
+  const inviteTokens: string[] = [];
+  for (const person of roster) {
+    if (person.kind !== "adult" || !person.inviteEmail) continue;
+    const token = randomBytes(24).toString("base64url");
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 14);
+    await db.insert(invites).values({
+      familyId: family.id,
+      token,
+      role: "adult",
+      createdByUserId: user.id!,
+      expiresAt,
+    });
+    inviteTokens.push(`${person.inviteEmail}|${token}`);
+  }
+
   await ensureLocalFamilyActor(family.id);
 
+  // Pass invite tokens via query so the circle page can show mailto links once.
+  if (inviteTokens.length > 0) {
+    const encoded = encodeURIComponent(inviteTokens.join(","));
+    redirect(`/families/${family.slug}?invites=${encoded}`);
+  }
   redirect(`/families/${family.slug}`);
 }
 
@@ -331,3 +395,69 @@ export async function unfollowFamilyAction(
   revalidatePath("/home");
   return { success: "Unfollowed." };
 }
+
+/** Owner grants or revokes a follower's ability to create posts. */
+export async function setFollowerCanPostAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const familyId = String(formData.get("familyId") ?? "");
+  const targetUserId = String(formData.get("userId") ?? "");
+  const canPost = String(formData.get("canPost") ?? "") === "true";
+
+  if (
+    !z.string().uuid().safeParse(familyId).success ||
+    !z.string().uuid().safeParse(targetUserId).success
+  ) {
+    return { error: "Invalid request." };
+  }
+
+  const membership = await getMembership(user.id!, familyId);
+  if (!isOwner(membership?.role)) {
+    return { error: "Only the circle owner can grant posting permission." };
+  }
+
+  const db = getDb();
+  const [target] = await db
+    .select()
+    .from(familyMemberships)
+    .where(
+      and(
+        eq(familyMemberships.familyId, familyId),
+        eq(familyMemberships.userId, targetUserId),
+      ),
+    )
+    .limit(1);
+
+  if (!target || target.role !== "follower") {
+    return { error: "Only followers can be granted photo posting." };
+  }
+
+  await db
+    .update(familyMemberships)
+    .set({ canPost })
+    .where(eq(familyMemberships.id, target.id));
+
+  await db
+    .update(follows)
+    .set({ canPost })
+    .where(
+      and(
+        eq(follows.familyId, familyId),
+        eq(follows.followerUserId, targetUserId),
+      ),
+    );
+
+  const [family] = await db
+    .select({ slug: families.slug })
+    .from(families)
+    .where(eq(families.id, familyId))
+    .limit(1);
+  if (family) {
+    revalidatePath(`/families/${family.slug}`);
+    revalidatePath("/home");
+  }
+  return { success: canPost ? "granted" : "revoked" };
+}
+
