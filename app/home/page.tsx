@@ -142,8 +142,9 @@ export default async function AppHomePage() {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16 pt-4 sm:px-10">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-4 sm:px-10">
+        <h1 className="sr-only md:hidden">Home</h1>
+        <div className="hidden flex-wrap items-end justify-between gap-4 md:flex">
           <div>
             <h1 className="font-display text-4xl font-semibold text-ink">
               Hello, {user.name?.split(" ")[0] ?? "there"}
@@ -170,12 +171,16 @@ export default async function AppHomePage() {
         </div>
 
         {composerCircles.length > 0 ? (
-          <section className="mt-8">
+          <section className="md:mt-8">
             <ComposePostForm circles={composerCircles} compact />
           </section>
-        ) : null}
+        ) : (
+          <p className="text-sm text-ink-soft md:hidden">
+            Hello, {user.name?.split(" ")[0] ?? "there"}
+          </p>
+        )}
 
-        <section className="mt-10">
+        <section className="mt-8 md:mt-10">
           <h2 className="font-display text-2xl text-ink">Feed</h2>
           {ordered.length === 0 ? (
             <EmptyState
@@ -221,7 +226,7 @@ export default async function AppHomePage() {
           )}
         </section>
 
-        <section className="mt-14">
+        <section className="mt-14 hidden md:block">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="font-display text-2xl text-ink">Your families</h2>
             <Button
@@ -266,7 +271,7 @@ export default async function AppHomePage() {
           )}
         </section>
 
-        <section className="mt-12">
+        <section className="mt-12 hidden md:block">
           <h2 className="font-display text-2xl text-ink">
             Collaborating & following
           </h2>

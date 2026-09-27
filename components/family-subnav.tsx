@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const links = [
+export const familyNavLinks = [
   { suffix: "", label: "Feed" },
   { suffix: "/browse", label: "Browse" },
   { suffix: "/people", label: "People" },
@@ -24,8 +24,8 @@ export function FamilySubnav({
     | "settings";
 }) {
   return (
-    <nav className="mt-6 flex flex-wrap gap-3 text-sm">
-      {links.map((item) => {
+    <nav className="mt-6 hidden flex-wrap gap-3 text-sm md:flex">
+      {familyNavLinks.map((item) => {
         const key =
           item.suffix === ""
             ? "feed"

@@ -113,7 +113,7 @@ export default async function FamilyPage({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-6 pb-16 pt-4 sm:px-10">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-16 pt-4 sm:px-10">
         <p className="text-sm text-ink-soft">
           <Link href="/home" className="hover:text-ink">
             ← Home
@@ -121,7 +121,7 @@ export default async function FamilyPage({
         </p>
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="font-display text-4xl font-semibold text-ink">
+            <h1 className="font-display text-3xl font-semibold text-ink sm:text-4xl">
               {family.name}
             </h1>
             {remoteCircle ? (
