@@ -369,3 +369,59 @@ export const pushSubscriptions = pgTable(
     index("push_subscriptions_user_idx").on(table.userId),
   ],
 );
+
+/** How new-family-post alerts are delivered. */
+export const notificationModeEnum = pgEnum("notification_mode", [
+  "instant",
+  "digest",
+  "off",
+]);
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  /** Master switch — false disables all web push from this app. */
+  pushEnabled: boolean("push_enabled").default(true).notNull(),
+  mode: notificationModeEnum("mode").notNull().default("instant"),
+  /** Local wall-clock quiet window, HH:MM (24h). Null = no quiet hours. */
+  quietHoursStart: text("quiet_hours_start"),
+  quietHoursEnd: text("quiet_hours_end"),
+  /** IANA timezone for quiet hours + digest (e.g. America/Chicago). */
+  timezone: text("timezone").notNull().default("UTC"),
+  /** Local hour (0–23) to flush digest / post-quiet-hours queue. */
+  digestHour: integer("digest_hour").notNull().default(8),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+/** Deferred push payloads (quiet hours or digest mode). */
+export const notificationDigestItems = pgTable(
+  "notification_digest_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    postId: uuid("post_id").references(() => posts.id, {
+      onDelete: "set null",
+    }),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    urlPath: text("url_path").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("notification_digest_user_pending_idx").on(
+      table.userId,
+      table.deliveredAt,
+    ),
+  ],
+);

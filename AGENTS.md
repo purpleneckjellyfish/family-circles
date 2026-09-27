@@ -26,6 +26,7 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 | Memories (posts) | `app/families/[slug]/posts/*`, `lib/actions/posts.ts`, `components/compose-post-form.tsx`, `components/post-card.tsx` |
 | Albums / people | `app/families/[slug]/albums/*`, `.../people`, `lib/actions/albums.ts`, `lib/actions/people.ts` |
 | Comments | `lib/actions/comments.ts`, `components/comment-form.tsx` |
+| PWA / push | `app/manifest.ts`, `public/sw.js`, `lib/push.ts`, `app/settings/notifications`, `app/api/push/*`, `app/api/cron/digest` |
 | Media files | `DATA_DIR` via `lib/media-storage.ts`; served at `app/api/media/[id]` |
 | EXIF helpers | `lib/exif.ts` (client + server) |
 | Permissions | `lib/permissions.ts` |
@@ -43,8 +44,9 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 - **Roles**: `owner` / `adult` moderate + invite; `follower` can contribute/comment. Adults/owners may **hide** or **remove** follower posts only.
 - **Memories**: `posts.memoryDate` (when it happened) vs `posts.postedAt` (when shared). EXIF prefills memory date (editable). Photos under `DATA_DIR/families/...` — never in Postgres.
 - **Throwbacks**: on-this-day matches `memory_date` month/day (else `posted_at` date), prior years only. Birthdays from `people.birthday`; anniversaries from `milestones`.
+- **PWA / push**: installable via manifest + `public/sw.js`. New posts call `notifyNewFamilyPost`. Quiet hours / digest queue into `notification_digest_items`; flush with `/api/cron/digest` + `CRON_SECRET`. Needs VAPID env + HTTPS (or localhost).
 - **Drizzle schema first**, then `db:generate` / `db:migrate`.
-- **Federation/video hooks** stay in schema; do not implement Phase 4+ unless asked.
+- **Federation/video hooks** stay in schema; do not implement Phase 5+ unless asked.
 - Comment **why**; brand **Family Circles**.
 
 ## Design bar
@@ -62,4 +64,4 @@ Warm paper + ink + forest accent; Fraunces + Source Sans 3. No purple SaaS chrom
 
 ## Phase map
 
-Phases 0–3 are in (foundation, people/circles, memories, throwbacks). Do not start PWA/federation unless asked.
+Phases 0–4 are in (foundation, people/circles, memories, throwbacks, PWA/push). Do not start browse/export/federation unless asked.

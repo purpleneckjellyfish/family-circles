@@ -15,6 +15,13 @@
       "when": 1790518609676,
       "tag": "0001_furry_guardsmen",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790518891188,
+      "tag": "0002_smart_selene",
+      "breakpoints": true
     }
   ]
 }

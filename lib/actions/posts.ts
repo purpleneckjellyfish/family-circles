@@ -26,6 +26,7 @@ import {
   canModerate,
   getMembership,
 } from "@/lib/permissions";
+import { notifyNewFamilyPost } from "@/lib/push";
 import { requireUser } from "@/lib/session";
 
 function revalidateFamily(slug: string) {
@@ -71,7 +72,7 @@ export async function createPostAction(
 
   const db = getDb();
   const [family] = await db
-    .select({ slug: families.slug })
+    .select({ slug: families.slug, name: families.name })
     .from(families)
     .where(eq(families.id, familyId))
     .limit(1);
@@ -192,6 +193,25 @@ export async function createPostAction(
   }
 
   const slug = familySlug || family.slug;
+
+  // Fire-and-forget push / digest queue (errors must not block posting).
+  const preview =
+    body ||
+    (stored.length === 1
+      ? "shared a photo"
+      : stored.length > 1
+        ? `shared ${stored.length} photos`
+        : "shared a memory");
+  void notifyNewFamilyPost({
+    familyId,
+    familyName: family.name ?? slug,
+    familySlug: slug,
+    postId: post.id,
+    authorUserId: user.id!,
+    authorName: user.name ?? "Someone",
+    preview,
+  }).catch(() => undefined);
+
   revalidateFamily(slug);
   redirect(`/families/${slug}/posts/${post.id}`);
 }
