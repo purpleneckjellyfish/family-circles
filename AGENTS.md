@@ -20,6 +20,8 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 | Landing | `app/page.tsx` |
 | Auth | `auth.ts`, `app/login`, `app/signup`, `app/api/auth/[...nextauth]` |
 | Home feed | `app/home`, `lib/feed.ts` |
+| Throwbacks | `app/throwbacks`, `lib/throwbacks.ts`, `components/throwbacks-panel.tsx` |
+| Milestones (anniversaries) | `app/families/[slug]/milestones`, `lib/actions/milestones.ts` |
 | Families / invites | `app/families/*`, `app/invite/[token]` |
 | Memories (posts) | `app/families/[slug]/posts/*`, `lib/actions/posts.ts`, `components/compose-post-form.tsx`, `components/post-card.tsx` |
 | Albums / people | `app/families/[slug]/albums/*`, `.../people`, `lib/actions/albums.ts`, `lib/actions/people.ts` |

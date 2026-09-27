@@ -136,6 +136,12 @@ export default async function FamilyPage({
             >
               Albums
             </Link>
+            <Link
+              href={`/families/${slug}/milestones`}
+              className="text-forest underline-offset-4 hover:underline"
+            >
+              Milestones
+            </Link>
           </nav>
         ) : (
           <p className="mt-6 text-ink-soft">

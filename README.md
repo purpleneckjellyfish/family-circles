@@ -32,6 +32,7 @@ Open [http://127.0.0.1:43127](http://127.0.0.1:43127).
 5. **New memory** → caption and/or photos; memory date prefills from EXIF when present (editable); tag people / pick album.
 6. **Home feed** shows posts from memberships + follows.
 7. As owner/adult, **Hide** or **Remove** collaborator (follower) posts from the post card.
+8. **Throwbacks** (`/throwbacks` or Home banner): prior-year memories for today’s month/day (memory date, else posted date). Birthdays from People; anniversaries from circle **Milestones**.
 
 Required env vars: `.env.example` (`DATABASE_URL`, `AUTH_SECRET`, `AUTH_URL` / `APP_URL`, `DATA_DIR`, VAPID placeholders).
 

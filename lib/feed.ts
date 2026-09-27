@@ -41,7 +41,20 @@ export type FeedPost = {
   commentCount: number;
 };
 
-async function familyIdsForUser(userId: string) {
+type PostRow = {
+  id: string;
+  body: string | null;
+  memoryDate: string | null;
+  postedAt: Date;
+  hiddenAt: Date | null;
+  familyId: string;
+  familyName: string;
+  familySlug: string;
+  authorName: string | null;
+  authorId: string | null;
+};
+
+export async function familyIdsForUser(userId: string) {
   const db = getDb();
   const memberRows = await db
     .select({ familyId: familyMemberships.familyId })
@@ -57,7 +70,7 @@ async function familyIdsForUser(userId: string) {
   return [...new Set([...memberRows, ...followRows].map((r) => r.familyId))];
 }
 
-async function moderateFamilyIds(userId: string) {
+export async function moderateFamilyIds(userId: string) {
   const db = getDb();
   const rows = await db
     .select({
@@ -71,45 +84,12 @@ async function moderateFamilyIds(userId: string) {
   );
 }
 
-export async function loadFeedPosts(opts: {
-  userId: string;
-  familyId?: string;
-  limit?: number;
-}): Promise<FeedPost[]> {
-  const db = getDb();
-  const familyIds = opts.familyId
-    ? [opts.familyId]
-    : await familyIdsForUser(opts.userId);
-  if (familyIds.length === 0) return [];
-
-  const modFamilies = await moderateFamilyIds(opts.userId);
-
-  const rows = await db
-    .select({
-      id: posts.id,
-      body: posts.body,
-      memoryDate: posts.memoryDate,
-      postedAt: posts.postedAt,
-      hiddenAt: posts.hiddenAt,
-      familyId: posts.familyId,
-      familyName: families.name,
-      familySlug: families.slug,
-      authorName: users.name,
-      authorId: users.id,
-    })
-    .from(posts)
-    .innerJoin(families, eq(families.id, posts.familyId))
-    .leftJoin(users, eq(users.id, posts.authorUserId))
-    .where(inArray(posts.familyId, familyIds))
-    .orderBy(desc(posts.postedAt))
-    .limit(opts.limit ?? 50);
-
-  // Hidden posts stay visible only to owners/adults of that circle.
-  const visible = rows.filter(
-    (r) => !r.hiddenAt || modFamilies.has(r.familyId),
-  );
+async function hydrateFeedPosts(
+  visible: PostRow[],
+  familyIds: string[],
+): Promise<FeedPost[]> {
   if (visible.length === 0) return [];
-
+  const db = getDb();
   const postIds = visible.map((r) => r.id);
 
   const mediaRows = await db
@@ -195,4 +175,82 @@ export async function loadFeedPosts(opts: {
       .map((a) => ({ id: a.id, title: a.title })),
     commentCount: commentMap.get(r.id) ?? 0,
   }));
+}
+
+export async function loadFeedPosts(opts: {
+  userId: string;
+  familyId?: string;
+  limit?: number;
+}): Promise<FeedPost[]> {
+  const db = getDb();
+  const familyIds = opts.familyId
+    ? [opts.familyId]
+    : await familyIdsForUser(opts.userId);
+  if (familyIds.length === 0) return [];
+
+  const modFamilies = await moderateFamilyIds(opts.userId);
+
+  const rows = await db
+    .select({
+      id: posts.id,
+      body: posts.body,
+      memoryDate: posts.memoryDate,
+      postedAt: posts.postedAt,
+      hiddenAt: posts.hiddenAt,
+      familyId: posts.familyId,
+      familyName: families.name,
+      familySlug: families.slug,
+      authorName: users.name,
+      authorId: users.id,
+    })
+    .from(posts)
+    .innerJoin(families, eq(families.id, posts.familyId))
+    .leftJoin(users, eq(users.id, posts.authorUserId))
+    .where(inArray(posts.familyId, familyIds))
+    .orderBy(desc(posts.postedAt))
+    .limit(opts.limit ?? 50);
+
+  const visible = rows.filter(
+    (r) => !r.hiddenAt || modFamilies.has(r.familyId),
+  );
+  return hydrateFeedPosts(visible, familyIds);
+}
+
+export async function loadPostsByIds(opts: {
+  userId: string;
+  postIds: string[];
+}): Promise<FeedPost[]> {
+  if (opts.postIds.length === 0) return [];
+  const db = getDb();
+  const modFamilies = await moderateFamilyIds(opts.userId);
+
+  const rows = await db
+    .select({
+      id: posts.id,
+      body: posts.body,
+      memoryDate: posts.memoryDate,
+      postedAt: posts.postedAt,
+      hiddenAt: posts.hiddenAt,
+      familyId: posts.familyId,
+      familyName: families.name,
+      familySlug: families.slug,
+      authorName: users.name,
+      authorId: users.id,
+    })
+    .from(posts)
+    .innerJoin(families, eq(families.id, posts.familyId))
+    .leftJoin(users, eq(users.id, posts.authorUserId))
+    .where(inArray(posts.id, opts.postIds));
+
+  const visible = rows.filter(
+    (r) => !r.hiddenAt || modFamilies.has(r.familyId),
+  );
+  const familyIds = [...new Set(visible.map((r) => r.familyId))];
+  const hydrated = await hydrateFeedPosts(visible, familyIds);
+
+  // Preserve caller order.
+  const map = new Map(hydrated.map((p) => [p.id, p]));
+  return opts.postIds
+    .map((id) => map.get(id))
+    .filter((p): p is FeedPost => Boolean(p));
 }

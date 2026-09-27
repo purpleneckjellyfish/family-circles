@@ -165,6 +165,36 @@ export const people = pgTable(
   (table) => [index("people_family_idx").on(table.familyId)],
 );
 
+/** Recurring circle milestones (anniversaries, etc.) matched by month-day. */
+export const milestoneKindEnum = pgEnum("milestone_kind", [
+  "anniversary",
+  "other",
+]);
+
+export const milestones = pgTable(
+  "milestones",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    familyId: uuid("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    kind: milestoneKindEnum("kind").notNull().default("anniversary"),
+    /** Original date; throwbacks match month + day each year. */
+    occursOn: date("occurs_on").notNull(),
+    personId: uuid("person_id").references(() => people.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("milestones_family_idx").on(table.familyId),
+    index("milestones_occurs_on_idx").on(table.occursOn),
+  ],
+);
+
 export const albums = pgTable(
   "albums",
   {

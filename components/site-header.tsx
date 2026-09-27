@@ -24,6 +24,9 @@ export async function SiteHeader() {
             <Button variant="ghost" render={<Link href="/home" />}>
               Home
             </Button>
+            <Button variant="ghost" render={<Link href="/throwbacks" />}>
+              Throwbacks
+            </Button>
             <form action={logoutAction}>
               <Button type="submit" variant="outline">
                 Sign out
