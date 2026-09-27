@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { FamilySubnav } from "@/components/family-subnav";
 import { SiteHeader } from "@/components/site-header";
+import { EmptyState } from "@/components/ui-states";
 import {
   listAlbumsWithPostCounts,
   listPeopleWithPostCounts,
@@ -45,23 +46,20 @@ export default async function FamilyBrowsePage({
         <section className="mt-10">
           <h2 className="font-display text-2xl text-ink">By person</h2>
           {peopleRows.length === 0 ? (
-            <p className="mt-3 text-ink-soft">
-              No people tagged yet.{" "}
-              <Link
-                href={`/families/${slug}/people`}
-                className="text-forest underline-offset-4 hover:underline"
-              >
-                Add people
-              </Link>{" "}
-              and tag them on memories.
-            </p>
+            <EmptyState
+              className="mt-4"
+              title="No people tagged yet"
+              description="Add kids and relatives, then tag them when you share a memory."
+              actionHref={`/families/${slug}/people`}
+              actionLabel="Add people"
+            />
           ) : (
             <ul className="mt-4 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
               {peopleRows.map((p) => (
                 <li key={p.id}>
                   <Link
                     href={`/families/${slug}/browse/people/${p.id}`}
-                    className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-paper-deep/40"
+                    className="flex items-center justify-between gap-3 px-4 py-3 transition hover:bg-paper-deep/40"
                   >
                     <span className="text-ink">{p.displayName}</span>
                     <span className="text-sm text-ink-soft">
@@ -79,10 +77,13 @@ export default async function FamilyBrowsePage({
         <section className="mt-12">
           <h2 className="font-display text-2xl text-ink">By year</h2>
           {yearRows.length === 0 ? (
-            <p className="mt-3 text-ink-soft">
-              No dated memories yet. Years use memory date, or posted date when
-              memory date is blank.
-            </p>
+            <EmptyState
+              className="mt-4"
+              title="No dated memories yet"
+              description="Years use the memory date when set, or the posted date when memory date is blank."
+              actionHref={`/families/${slug}/posts/new`}
+              actionLabel="Share a memory"
+            />
           ) : (
             <ul className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {yearRows.map((y) => (
@@ -109,16 +110,13 @@ export default async function FamilyBrowsePage({
         <section className="mt-12">
           <h2 className="font-display text-2xl text-ink">By album</h2>
           {albumRows.length === 0 ? (
-            <p className="mt-3 text-ink-soft">
-              No albums yet.{" "}
-              <Link
-                href={`/families/${slug}/albums`}
-                className="text-forest underline-offset-4 hover:underline"
-              >
-                Create an album
-              </Link>
-              .
-            </p>
+            <EmptyState
+              className="mt-4"
+              title="No albums yet"
+              description="Group memories by trip, season, or celebration."
+              actionHref={`/families/${slug}/albums`}
+              actionLabel="Create an album"
+            />
           ) : (
             <ul className="mt-4 divide-y divide-border/70 rounded-xl border border-border/80 bg-card/50">
               {albumRows.map((a) => (

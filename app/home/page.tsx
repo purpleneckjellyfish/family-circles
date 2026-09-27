@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { PostCard } from "@/components/post-card";
 import { SiteHeader } from "@/components/site-header";
 import { ThrowbacksPanel } from "@/components/throwbacks-panel";
+import { EmptyState } from "@/components/ui-states";
 import { Button } from "@/components/ui/button";
 import { families, familyMemberships, follows, getDb } from "@/db";
 import { loadFeedPosts } from "@/lib/feed";
@@ -126,16 +127,24 @@ export default async function AppHomePage() {
         <section className="mt-10">
           <h2 className="font-display text-2xl text-ink">Feed</h2>
           {feed.length === 0 ? (
-            <p className="mt-3 text-ink-soft">
-              Nothing here yet. Create a circle or follow one, then share a
-              memory.
-            </p>
+            <EmptyState
+              className="mt-4"
+              title="No memories yet"
+              description="Create a circle or follow one, then share a photo or story. This feed gathers everything you belong to."
+              actionHref={
+                firstFamily
+                  ? `/families/${firstFamily.slug}/posts/new`
+                  : "/families/new"
+              }
+              actionLabel={firstFamily ? "Share a memory" : "Create a circle"}
+            />
           ) : (
-            <div className="mt-4 space-y-4">
-              {feed.map((post) => (
+            <div className="mt-4 space-y-5">
+              {feed.map((post, i) => (
                 <PostCard
                   key={post.id}
                   post={post}
+                  index={i}
                   viewerCanModerate={moderateFamilies.has(post.familyId)}
                 />
               ))}
@@ -155,16 +164,13 @@ export default async function AppHomePage() {
             </Button>
           </div>
           {familyMembers.length === 0 ? (
-            <p className="mt-3 text-ink-soft">
-              No circles yet.{" "}
-              <Link
-                href="/families/new"
-                className="text-forest underline-offset-4 hover:underline"
-              >
-                Create one
-              </Link>{" "}
-              or accept an invite.
-            </p>
+            <EmptyState
+              className="mt-4"
+              title="No circles yet"
+              description="Start a private family circle, or accept an invite from someone who already has one."
+              actionHref="/families/new"
+              actionLabel="Create a circle"
+            />
           ) : (
             <ul className="mt-4 space-y-3">
               {familyMembers.map((f) => (

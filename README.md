@@ -25,6 +25,10 @@ npm run dev
 
 Open [http://127.0.0.1:43127](http://127.0.0.1:43127).
 
+## Deploy on Unraid
+
+See **[docs/unraid.md](docs/unraid.md)** for volumes (`/data` + Postgres), HTTPS reverse proxy, VAPID, and digest cron.
+
 ## PWA install & web push
 
 1. Generate VAPID keys and set `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` in `.env` (see `.env.example`).
@@ -42,7 +46,7 @@ curl -X POST -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/digest"
 
 Run that **hourly** from Unraid / cron. Delivery happens when the user’s local hour equals their digest hour and they are outside quiet hours.
 
-## Try the product (Phases 1–5)
+## Try the product (Phases 1–6)
 
 1. **Create account** at `/signup`.
 2. **Create a circle** (Home → New circle).
@@ -61,8 +65,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
-- App: [http://127.0.0.1:43127](http://127.0.0.1:43127) (map HTTPS reverse proxy in production)
-- Media: volume `media` → `/data`
+- App: [http://127.0.0.1:43127](http://127.0.0.1:43127) (map HTTPS reverse proxy in production — see [docs/unraid.md](docs/unraid.md))
+- Media: volume `media` → `/data` (or bind-mount a share)
 - Database: Postgres 16 on `5432`
 
 ## Project layout
@@ -74,10 +78,11 @@ docker compose up --build
 | `public/sw.js` | Service worker (PWA + push) |
 | `lib/push.ts` | Web push + quiet hours / digest |
 | `lib/browse.ts` / `lib/export-zip.ts` | Browse queries + ZIP export |
-| `components/` | UI |
+| `components/` | UI (photo-first cards, empty/loading states) |
+| `docs/unraid.md` | Unraid volumes, HTTPS, VAPID, cron |
 | `db/` | Drizzle schema + client |
 | `AGENTS.md` | Architecture map for agents / IDEs |
 
 ## What’s next
 
-Phase 6+: Unraid polish, video UI, ActivityPub federation.
+Phase 7+: video upload/transcoding, ActivityPub federation.

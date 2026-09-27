@@ -162,6 +162,25 @@
   }
 }
 
+@keyframes fc-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes fc-soft-zoom {
+  from {
+    transform: scale(1.04);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
 .animate-fc-rise {
   animation: fc-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -172,4 +191,22 @@
 
 .animate-fc-drift {
   animation: fc-drift 5s ease-in-out infinite alternate;
+}
+
+.animate-fc-pulse {
+  animation: fc-pulse 1.6s ease-in-out infinite;
+}
+
+.animate-fc-soft-zoom {
+  animation: fc-soft-zoom 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fc-rise,
+  .animate-fc-fade,
+  .animate-fc-drift,
+  .animate-fc-pulse,
+  .animate-fc-soft-zoom {
+    animation: none !important;
+  }
 }

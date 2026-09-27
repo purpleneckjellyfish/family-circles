@@ -9,11 +9,22 @@ export default async function HomePage() {
 
   return (
     <div className="relative flex min-h-full flex-1 flex-col overflow-hidden">
+      {/* Full-bleed photo plane — warm lake/forest wash, not a floating card. */}
+      <div
+        className="pointer-events-none absolute inset-0 -z-0"
+        aria-hidden
+      >
+        <div className="absolute inset-0 animate-fc-soft-zoom bg-[radial-gradient(ellipse_80%_60%_at_70%_40%,#8fa99a_0%,transparent_55%),linear-gradient(135deg,#cbb89a_0%,#d9e5dc_42%,#6f8f7c_100%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(243,239,230,0.55),transparent_45%)]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-paper via-paper/85 to-paper/25 sm:via-paper/70" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-paper-deep/80 to-transparent" />
+      </div>
+
       <SiteHeader />
 
       <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 pb-20 pt-6 sm:px-10 sm:pb-28">
-        <section className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16">
-          <div className="animate-fc-rise max-w-xl">
+        <section className="max-w-xl">
+          <div className="animate-fc-rise">
             <h1 className="font-display text-[clamp(2.75rem,8vw,5.25rem)] leading-[0.95] font-semibold text-ink">
               Family Circles
             </h1>
@@ -27,7 +38,11 @@ export default async function HomePage() {
                   <Button size="lg" render={<Link href="/home" />}>
                     Go to your circles
                   </Button>
-                  <Button size="lg" variant="outline" render={<Link href="/families/new" />}>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    render={<Link href="/families/new" />}
+                  >
                     Create a circle
                   </Button>
                 </>
@@ -36,34 +51,33 @@ export default async function HomePage() {
                   <Button size="lg" render={<Link href="/signup" />}>
                     Create your circle
                   </Button>
-                  <Button size="lg" variant="outline" render={<Link href="/login" />}>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    render={<Link href="/login" />}
+                  >
                     Sign in
                   </Button>
                 </>
               )}
             </div>
           </div>
-
-          <div
-            className="animate-fc-rise animate-fc-drift relative mx-auto aspect-[4/5] w-full max-w-md lg:max-w-none"
-            style={{ animationDelay: "120ms" }}
-            aria-hidden
-          >
-            <div className="absolute inset-0 rotate-[-3deg] rounded-[1.25rem] bg-paper-deep shadow-[0_30px_60px_-35px_rgba(31,26,20,0.45)]" />
-            <div className="absolute inset-3 rotate-[2.5deg] overflow-hidden rounded-[1rem] border border-border/70 bg-[linear-gradient(145deg,#d9e5dc_0%,#cbb89a_48%,#8fa99a_100%)] shadow-[0_24px_48px_-28px_rgba(31,26,20,0.55)]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%)]" />
-              <div className="absolute inset-x-6 bottom-6 rounded-md bg-paper/85 px-4 py-3 backdrop-blur-sm">
-                <p className="font-display text-lg text-ink">Summer at the lake</p>
-                <p className="text-sm text-ink-soft">August 2019 · the kids</p>
-              </div>
-            </div>
-          </div>
         </section>
+
+        <p
+          className="animate-fc-fade mt-16 max-w-sm font-display text-xl text-ink/80 sm:mt-24"
+          style={{ animationDelay: "200ms" }}
+        >
+          Summer at the lake
+          <span className="mt-1 block font-sans text-sm text-ink-soft">
+            August 2019 · kept on your disk
+          </span>
+        </p>
       </main>
 
       <section
         id="about"
-        className="animate-fc-fade relative z-10 border-t border-border/70 bg-paper/50"
+        className="animate-fc-fade relative z-10 border-t border-border/70 bg-paper/70 backdrop-blur-[2px]"
       >
         <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-16 sm:px-10 md:grid-cols-3">
           <div>

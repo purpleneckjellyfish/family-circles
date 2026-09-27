@@ -7,6 +7,7 @@ services:
       POSTGRES_PASSWORD: familycircles
       POSTGRES_DB: familycircles
     volumes:
+      # Unraid: prefer a bind mount, e.g. /mnt/user/appdata/family-circles/pgdata
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
@@ -23,10 +24,12 @@ services:
       db:
         condition: service_healthy
     ports:
+      # Host 43127 → container 3000 (point reverse proxy here or use Docker network)
       - "43127:3000"
     environment:
       DATABASE_URL: postgres://familycircles:familycircles@db:5432/familycircles
       AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+      # Production: https://your.domain (must match the browser origin)
       APP_URL: ${APP_URL:-http://127.0.0.1:43127}
       DATA_DIR: /data
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
@@ -34,7 +37,8 @@ services:
       VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
       CRON_SECRET: ${CRON_SECRET:-}
     volumes:
-      # Originals and generated derivatives live here (Unraid: map a share)
+      # Originals live here. Unraid: map a share, e.g.
+      # /mnt/user/appdata/family-circles/data:/data
       - media:/data
 
 volumes:

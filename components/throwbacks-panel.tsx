@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { PostCard } from "@/components/post-card";
+import { EmptyState } from "@/components/ui-states";
 import type { ThrowbackMemory, ThrowbackMilestone } from "@/lib/throwbacks";
 
 function yearsLabel(years: number, kind: "memory" | "milestone") {
@@ -114,10 +115,12 @@ export function ThrowbacksPanel({
       </section>
 
       {empty && !compact ? (
-        <p className="text-ink-soft">
-          Add birthdays under People, anniversaries under Milestones, and tag
-          memory dates on posts to fill this page over time.
-        </p>
+        <EmptyState
+          title="Quiet on this day"
+          description="Add birthdays under People, anniversaries under Milestones, and set memory dates on posts — this page fills in over the years."
+          actionHref="/home"
+          actionLabel="Back to home"
+        />
       ) : null}
     </div>
   );

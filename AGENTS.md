@@ -26,6 +26,8 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 | Memories (posts) | `app/families/[slug]/posts/*`, `lib/actions/posts.ts`, `components/compose-post-form.tsx`, `components/post-card.tsx` |
 | Browse (person / year / album) | `app/families/[slug]/browse/*`, `lib/browse.ts` |
 | ZIP export | `app/families/[slug]/export`, `app/api/families/[slug]/export`, `lib/export-zip.ts` |
+| Empty / loading / error UI | `components/ui-states.tsx`, `app/**/loading.tsx`, `app/error.tsx`, `app/not-found.tsx` |
+| Unraid deploy | `docs/unraid.md`, `docker-compose.yml`, `Dockerfile` |
 | Albums / people | `app/families/[slug]/albums/*`, `.../people`, `lib/actions/albums.ts`, `lib/actions/people.ts` |
 | Comments | `lib/actions/comments.ts`, `components/comment-form.tsx` |
 | PWA / push | `app/manifest.ts`, `public/sw.js`, `lib/push.ts`, `app/settings/notifications`, `app/api/push/*`, `app/api/cron/digest` |
@@ -48,13 +50,14 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 - **Throwbacks**: on-this-day matches `memory_date` month/day (else `posted_at` date), prior years only. Birthdays from `people.birthday`; anniversaries from `milestones`.
 - **PWA / push**: installable via manifest + `public/sw.js`. New posts call `notifyNewFamilyPost`. Quiet hours / digest queue into `notification_digest_items`; flush with `/api/cron/digest` + `CRON_SECRET`. Needs VAPID env + HTTPS (or localhost).
 - **Browse / export**: `/families/[slug]/browse` lists people, years (memory date else posted), albums. ZIP at `/families/[slug]/export` → `/api/families/[slug]/export` (originals + `memories.json` / `memories.csv`).
+- **Polish**: photo-first post cards, intentional motion (`animate-fc-*`, reduced-motion safe), empty / loading / error states. Deploy notes in `docs/unraid.md`.
 - **Drizzle schema first**, then `db:generate` / `db:migrate`.
-- **Federation/video hooks** stay in schema; do not implement Phase 6+ unless asked.
+- **Federation/video hooks** stay in schema; do not implement Phase 7+ unless asked.
 - Comment **why**; brand **Family Circles**.
 
 ## Design bar
 
-Warm paper + ink + forest accent; Fraunces + Source Sans 3. No purple SaaS chrome.
+Warm paper + ink + forest accent; Fraunces + Source Sans 3. Photo-first album feel — no purple SaaS chrome.
 
 ## Scripts
 
@@ -67,4 +70,4 @@ Warm paper + ink + forest accent; Fraunces + Source Sans 3. No purple SaaS chrom
 
 ## Phase map
 
-Phases 0–5 are in (foundation through browse/export). Do not start Unraid polish / video / federation unless asked.
+Phases 0–6 are in (foundation through Unraid polish). Do not start video / federation unless asked.

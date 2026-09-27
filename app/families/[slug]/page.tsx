@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { FollowButton, InviteForm } from "@/components/family-forms";
 import { FamilySubnav } from "@/components/family-subnav";
 import { PostCard } from "@/components/post-card";
+import { EmptyState } from "@/components/ui-states";
 import { Button } from "@/components/ui/button";
 import {
   families,
@@ -136,27 +137,20 @@ export default async function FamilyPage({
           <section className="mt-10">
             <h2 className="font-display text-2xl text-ink">Memories</h2>
             {feed.length === 0 ? (
-              <p className="mt-3 text-ink-soft">
-                No memories yet.
-                {mayPost ? (
-                  <>
-                    {" "}
-                    <Link
-                      href={`/families/${slug}/posts/new`}
-                      className="text-forest underline-offset-4 hover:underline"
-                    >
-                      Share the first one
-                    </Link>
-                    .
-                  </>
-                ) : null}
-              </p>
+              <EmptyState
+                className="mt-4"
+                title="No memories yet"
+                description="Share a photo or a short story to start this circle’s album."
+                actionHref={mayPost ? `/families/${slug}/posts/new` : undefined}
+                actionLabel={mayPost ? "Share the first memory" : undefined}
+              />
             ) : (
-              <div className="mt-4 space-y-4">
-                {feed.map((post) => (
+              <div className="mt-4 space-y-5">
+                {feed.map((post, i) => (
                   <PostCard
                     key={post.id}
                     post={post}
+                    index={i}
                     viewerCanModerate={viewerCanModerate}
                     showFamilyLink={false}
                   />
