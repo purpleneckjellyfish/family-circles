@@ -43,6 +43,12 @@ Self-hosted family memory app. Brand name is **Family Circles** (never “Kin”
 | DB client | `db/index.ts` |
 | Env | `lib/env.ts`, `.env.example` |
 
+## Cloud Agent environment
+
+- Install: `npm ci`
+- Start: `bash scripts/cloud-agent-start.sh` (Postgres → migrate → `next dev` on `:43127`)
+- App URL in agents: `http://127.0.0.1:43127`
+
 ## Conventions
 
 - **TypeScript + App Router**. Prefer server components; `"use client"` only for interactivity.
