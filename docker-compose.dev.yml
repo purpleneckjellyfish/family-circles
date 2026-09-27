@@ -1,0 +1,8 @@
+# Optional local override — publish Postgres on the host for drizzle-kit / GUI tools.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db
+
+services:
+  db:
+    ports:
+      - "5432:5432"

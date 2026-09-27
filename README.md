@@ -37,17 +37,21 @@ Use the printed `https://….trycloudflare.com` URL in your browser. Demo login:
 
 ## Deploy on Unraid
 
-**Not on GitHub yet?** This is still a Cursor new project — click **Create repo** in the agent UI, then clone that remote onto your Unraid box.
+Repo: [github.com/purpleneckjellyfish/family-circles](https://github.com/purpleneckjellyfish/family-circles).
 
-See **[docs/unraid.md](docs/unraid.md)** for the full path (`.env`, bind mounts, HTTPS). Short version after clone:
+**GitHub Actions** builds and pushes `ghcr.io/purpleneckjellyfish/family-circles:latest` on every `main` push. Unraid **pulls** that image (no build on the tower).
+
+See **[docs/unraid.md](docs/unraid.md)**. Short version:
 
 ```bash
-cp .env.example .env   # set AUTH_SECRET, APP_URL/AUTH_URL (https://…), VAPID_*, CRON_SECRET
+git clone https://github.com/purpleneckjellyfish/family-circles.git
+cd family-circles
+cp .env.example .env   # AUTH_SECRET, APP_URL/AUTH_URL (https://…), VAPID_*, CRON_SECRET
 mkdir -p /mnt/user/appdata/family-circles/{data,pgdata}
-docker compose -f docker-compose.yml -f docker-compose.unraid.yml up --build -d
+./scripts/unraid-up.sh   # compose pull + up -d
 ```
 
-Migrations run automatically on container start. App: host port **43127** → reverse-proxy with TLS.
+Migrations run on container start. App: host port **43127** → reverse-proxy with TLS.
 
 ## PWA install & web push
 

@@ -1,15 +1,20 @@
-# Unraid override — use with:
-#   docker compose -f docker-compose.yml -f docker-compose.unraid.yml up --build -d
+# Unraid override — pull the GHCR image from Actions (do not pass --build).
 #
-# Adjust host paths to your shares if needed.
+#   ./scripts/unraid-up.sh
+#   # or:
+#   docker compose -f docker-compose.yml -f docker-compose.unraid.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.unraid.yml up -d
+#
+# Optional pin: FAMILY_CIRCLES_IMAGE=ghcr.io/purpleneckjellyfish/family-circles:sha-<commit>
 
 services:
   db:
-    ports: [] # keep Postgres off the LAN; app reaches it on the Docker network
     volumes:
       - /mnt/user/appdata/family-circles/pgdata:/var/lib/postgresql/data
 
   app:
+    image: ${FAMILY_CIRCLES_IMAGE:-ghcr.io/purpleneckjellyfish/family-circles:latest}
+    pull_policy: always
     container_name: family-circles
     env_file:
       - .env
