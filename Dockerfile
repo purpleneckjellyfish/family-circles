@@ -18,9 +18,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATA_DIR=/data
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# Unraid-friendly defaults (override in compose). 1000 = node user.
+ENV PUID=1000
+ENV PGID=1000
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates ffmpeg \
+  && apt-get install -y --no-install-recommends ca-certificates ffmpeg gosu \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /data /app/scripts \
   && chown -R node:node /data /app
@@ -41,7 +44,8 @@ COPY --from=deps --chown=node:node /app/node_modules/postgres ./node_modules/pos
 
 RUN chmod +x /app/scripts/docker-entrypoint.sh
 
-USER node
+# Entrypoint runs as root to chown /data, then gosu to PUID:PGID
+USER root
 EXPOSE 3000
 VOLUME ["/data"]
 ENTRYPOINT ["/app/scripts/docker-entrypoint.sh"]
