@@ -41,17 +41,19 @@ Repo: [github.com/purpleneckjellyfish/family-circles](https://github.com/purplen
 
 **GitHub Actions** builds and pushes `ghcr.io/purpleneckjellyfish/family-circles:latest` on every `main` push. Unraid **pulls** that image (no build on the tower).
 
-See **[docs/unraid.md](docs/unraid.md)**. Short version:
+See **[docs/unraid.md](docs/unraid.md)**. Short version (Compose Manager / Docker tab):
 
 ```bash
-git clone https://github.com/purpleneckjellyfish/family-circles.git
-cd family-circles
-cp .env.example .env   # AUTH_SECRET, APP_URL/AUTH_URL (https://…), VAPID_*, CRON_SECRET
-mkdir -p /mnt/user/appdata/family-circles/{data,pgdata}
-./scripts/unraid-up.sh   # compose pull + up -d
+mkdir -p /mnt/user/appdata/family-circles/{data,pgdata,compose}
+cd /mnt/user/appdata/family-circles/compose
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/purpleneckjellyfish/family-circles/main/docker-compose.unraid-stack.yml
+curl -fsSL -o .env \
+  https://raw.githubusercontent.com/purpleneckjellyfish/family-circles/main/env.unraid.example
+# edit .env — AUTH_SECRET, APP_URL/AUTH_URL (https://…), POSTGRES_PASSWORD, VAPID_*, CRON_SECRET
 ```
 
-Migrations run on container start. App: host port **43127** → reverse-proxy with TLS.
+Then in Unraid: Docker → Compose Manager → add stack pointing at that `compose` folder → Up (pull only, no build). App on **43127**.
 
 ## PWA install & web push
 

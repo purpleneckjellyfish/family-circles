@@ -4,6 +4,62 @@ Self-host Family Circles with Docker on Unraid. Photos stay on a mapped share; t
 
 **Preferred path:** GitHub Actions builds the image → Unraid **pulls** it with Compose (no build on the tower).
 
+## Install from Unraid Docker tab (Compose Manager)
+
+Do **not** use **Add Container** for Family Circles — you need the app **and** Postgres as one stack.
+
+### One-time prep (SSH or Unraid terminal)
+
+```bash
+mkdir -p /mnt/user/appdata/family-circles/{data,pgdata,compose}
+cd /mnt/user/appdata/family-circles/compose
+
+# Grab the single-file stack + env template from GitHub
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/purpleneckjellyfish/family-circles/main/docker-compose.unraid-stack.yml
+curl -fsSL -o .env.example \
+  https://raw.githubusercontent.com/purpleneckjellyfish/family-circles/main/env.unraid.example
+cp .env.example .env
+nano .env   # set AUTH_SECRET, APP_URL, AUTH_URL, POSTGRES_PASSWORD, VAPID_*, CRON_SECRET
+```
+
+If `docker pull ghcr.io/purpleneckjellyfish/family-circles:latest` fails with `denied`, log in once:
+
+```bash
+echo YOUR_PAT_WITH_read_packages | docker login ghcr.io -u purpleneckjellyfish --password-stdin
+```
+
+Or set the [package](https://github.com/users/purpleneckjellyfish/packages/container/package/family-circles) visibility to **Public**.
+
+### Compose Manager (Docker tab)
+
+1. Install **Compose Manager** from Community Apps (if you don’t already have it).
+2. Docker tab → **Compose** → **Add New Stack** (wording varies slightly by plugin version).
+3. Point the stack at `/mnt/user/appdata/family-circles/compose` (the folder that contains `docker-compose.yml` + `.env`).
+4. **Compose Up** / Start — it should **pull** `ghcr.io/.../family-circles:latest` and `postgres:16-alpine` (no build).
+5. Confirm two containers: `family-circles` and `family-circles-db`.
+6. Open `http://TOWER_IP:43127` → sign up. Then put Nginx Proxy Manager / SWAG on that port with HTTPS and set `APP_URL` / `AUTH_URL` to that HTTPS origin.
+
+### Updates
+
+After a green [Actions build](https://github.com/purpleneckjellyfish/family-circles/actions) on `main`:
+
+- In Compose Manager: **Pull** then **Up**, or  
+- SSH: `cd /mnt/user/appdata/family-circles/compose && docker compose pull && docker compose up -d`
+
+### Alternative (git clone + two-file compose)
+
+If you prefer the full repo on disk:
+
+```bash
+git clone https://github.com/purpleneckjellyfish/family-circles.git /mnt/user/appdata/family-circles/src
+cd /mnt/user/appdata/family-circles/src
+cp .env.example .env   # edit
+./scripts/unraid-up.sh
+```
+
+That uses `docker-compose.yml` + `docker-compose.unraid.yml` (same images/volumes).
+
 ## Image (GitHub Actions → GHCR)
 
 On every push to `main`, [`.github/workflows/docker.yml`](../.github/workflows/docker.yml) builds and pushes:

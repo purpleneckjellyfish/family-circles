@@ -1,0 +1,51 @@
+# Family Circles — single-file stack for Unraid Docker → Compose Manager
+#
+# Project directory (recommended):
+#   /mnt/user/appdata/family-circles/compose/
+# Put this file there as docker-compose.yml, plus a .env beside it.
+#
+# Images:
+#   app → ghcr.io/purpleneckjellyfish/family-circles:latest  (built by GitHub Actions)
+#   db  → postgres:16-alpine
+#
+# Do not use "Add Container" for this app — it needs Postgres + the app together.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: family-circles-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: familycircles
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-familycircles}
+      POSTGRES_DB: familycircles
+    volumes:
+      - /mnt/user/appdata/family-circles/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U familycircles -d familycircles"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    image: ${FAMILY_CIRCLES_IMAGE:-ghcr.io/purpleneckjellyfish/family-circles:latest}
+    container_name: family-circles
+    restart: unless-stopped
+    pull_policy: always
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "43127:3000"
+    environment:
+      DATABASE_URL: postgres://familycircles:${POSTGRES_PASSWORD:-familycircles}@db:5432/familycircles
+      AUTH_SECRET: ${AUTH_SECRET}
+      APP_URL: ${APP_URL}
+      AUTH_URL: ${AUTH_URL:-${APP_URL}}
+      DATA_DIR: /data
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:admin@example.com}
+      CRON_SECRET: ${CRON_SECRET:-}
+    volumes:
+      - /mnt/user/appdata/family-circles/data:/data
